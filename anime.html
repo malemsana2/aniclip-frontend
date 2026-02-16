@@ -50,7 +50,7 @@
                 </div>
                 <span class="font-black text-xl tracking-tight text-slate-100">Ani<span class="text-blue-500">Clips</span></span>
             </a>
-            <a href="index.html" class="text-xs font-bold text-slate-500 hover:text-white transition-colors flex items-center gap-1 uppercase tracking-wider"><span class="material-symbols-rounded text-sm">arrow_back</span> Library</a>
+            <a href="/" class="text-xs font-bold text-slate-500 hover:text-white transition-colors flex items-center gap-1 uppercase tracking-wider"><span class="material-symbols-rounded text-sm">arrow_back</span> Library</a>
         </nav>
     </header>
     
@@ -391,4 +391,5 @@
     function trackDownload() { fetch(`${API_URL}/animes/${state.animeId}/track-download`, { method: 'POST' }).catch(()=>{}); }
 </script>
 </body>
+
 </html>
