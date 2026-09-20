@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anime Clips Library</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script data-cfasync="false" src="//dc9xwpjprguup.cloudfront.net/?pwxcd=1466068"></script>
+    <!-- <script data-cfasync="false" src="//dc9xwpjprguup.cloudfront.net/?pwxcd=1466068"></script> -->
     <meta property="og:image" content="https://cdn.jsdelivr.net/gh/malemsana2/aniclip-frontend@main/preview.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -337,11 +337,11 @@
 
     <!-- ========================= JS LOGIC ========================= -->
     <script>
-        const API_URL = 'https://api.aniclips.site/api';
+        const API_URL = 'https://aniclip-backend-nycl.onrender.com/api';
         const JSON_ENDPOINTS = {
             featured: 'https://cdn.jsdelivr.net/gh/adsjust460/bucket-bandage@main/featured.json',
             recent: 'https://cdn.jsdelivr.net/gh/adsjust460/bucket-bandage@main/recent.json',
-            trending: 'https://cdn.jsdelivr.net/gh/adsjust460/bucket-bandage@main/trending.json',
+            trending: 'https://cdn.jsdelivr.net/gh/adsjust460/bucket-bandage@main/Trending.json',
             archive: 'https://cdn.jsdelivr.net/gh/adsjust460/bucket-bandage@main/archive.json'
         };
 
@@ -830,14 +830,13 @@
                     <h4 class="text-white font-bold mb-6 text-xs uppercase tracking-widest">Library</h4>
                     <ul class="space-y-4 text-slate-400 text-sm">
                         <li><a href="/" class="hover:text-blue-400 transition-colors">Home</a></li>
-                        <li><a href="https://zenclips.in" class="hover:text-blue-400 transition-colors">Trending</a></li>
+                        <li><a href="/" class="hover:text-blue-400 transition-colors">Trending</a></li>
                         <li><a href="#browse-genres" class="hover:text-blue-400 transition-colors">Collections</a></li>
                         <li><a href="blogs"
                                 class="text-blue-400 hover:text-blue-300 font-medium transition-colors flex items-center gap-1">Blogs
                                 <span
                                     class="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1 rounded uppercase tracking-widest text-[9px] font-bold">New</span></a>
                         </li>
-                        <li><a href="feedback" class="hover:text-blue-400 transition-colors flex items-center gap-1.5"><span class="material-symbols-rounded text-sm">chat_bubble</span> Feedback</a></li>
                     </ul>
                 </div>
 
@@ -902,7 +901,7 @@
                 <div class="flex gap-6">
                     <a href="#" class="hover:text-white transition-colors">Privacy</a>
                     <a href="#" class="hover:text-white transition-colors">Terms</a>
-                    <a href="feedback" class="hover:text-white transition-colors">Feedback</a>
+                    <a href="#" class="hover:text-white transition-colors">Contact</a>
                 </div>
             </div>
         </div>
