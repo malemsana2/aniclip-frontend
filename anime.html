@@ -993,7 +993,7 @@
                 const thumbRaw = c.sources?.thumbnail || c.thumb_url || "";
                 const hoverRaw = c.sources?.hover || "";
                 return `
-                    <div class="relative group clip-card cursor-pointer overflow-hidden bg-slate-950 aspect-16-9" onclick="openPreview('${epId}', ${i})" onmouseenter="playPreview(this, '${hoverRaw}', '${c.id}', ${epIdx})" onmouseleave="stopPreview(this, '${c.id}')" data-thumb-raw="${thumbRaw}" data-clip-id="${c.id}">
+                    <div class="relative group clip-card cursor-pointer overflow-hidden rounded-md bg-slate-950 aspect-16-9" onclick="openPreview('${epId}', ${i})" onmouseenter="playPreview(this, '${hoverRaw}', '${c.id}', ${epIdx})" onmouseleave="stopPreview(this, '${c.id}')" data-thumb-raw="${thumbRaw}" data-clip-id="${c.id}">
                         <div class="absolute inset-0 flex items-center justify-center animate-pulse"><span class="material-symbols-rounded text-slate-700 text-2xl">image</span></div>
                         <img src="" loading="lazy" class="clip-thumb absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-0 transition-opacity z-10 hidden">
                         <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none"><span class="material-symbols-rounded text-4xl text-white">play_circle</span></div>
@@ -1016,7 +1016,7 @@
             }, 50);
         }
 
-        function renderSkeleton(container) { container.innerHTML = `<div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-[2px] opacity-50">${Array(6).fill(0).map(() => `<div class="aspect-16-9 shimmer bg-slate-800"></div>`).join('')}</div>`; }
+        function renderSkeleton(container) { container.innerHTML = `<div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-[2px] opacity-50">${Array(6).fill(0).map(() => `<div class="aspect-16-9 shimmer bg-slate-800 rounded-md"></div>`).join('')}</div>`; }
         function renderHero(d) {
             const g = (d.genres || []).map(x => `<span class="text-[9px] bg-slate-800/80 border border-slate-600 px-2 py-0.5 rounded text-slate-300 uppercase font-bold tracking-wide">${x}</span>`).join('');
             els.hero.innerHTML = `<div class="absolute inset-0 z-0"><img src="${d.poster_url}" class="w-full h-full object-cover object-top opacity-30 blur-xl"></div><div class="absolute inset-0 z-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent"></div><div class="relative z-10 p-6 md:p-8 flex flex-col md:flex-row gap-6 items-start md:items-end h-full"><img src="${d.poster_url}" class="w-32 md:w-48 rounded shadow-2xl border border-white/10 aspect-4-3 object-cover bg-slate-950"><div class="flex-1 mb-2"><div class="flex gap-2 mb-2 flex-wrap items-center"><span class="text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded font-bold uppercase tracking-wider shadow-lg">TV SERIES</span>${g}</div><h1 class="text-3xl md:text-5xl font-black text-white leading-tight drop-shadow-md">${d.title}</h1><p class="text-slate-300 mt-4 text-sm leading-relaxed max-w-2xl line-clamp-3 font-medium">${d.description}</p></div></div>`;
