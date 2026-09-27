@@ -400,6 +400,10 @@
             epAbortControllers: new Map(),
             activeModal: false,
             currentFocusIdx: null,
+            isJumping: false,
+            jumpTarget: null,
+            jumpPinObserver: null,
+            _jumpTimer: null,
             adClipChanges: 1,
             adLastRefresh: Date.now(),
             adTimer: null,
@@ -564,12 +568,48 @@
         function closeNav() { els.navModal.classList.add('invisible', 'opacity-0'); }
         async function jumpToEpisode(idx) {
             closeNav();
-            reconcileEpisodes(idx, idx);
-            const r = document.getElementById(`row-${idx}`); if (r) requestAnimationFrame(() => r.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+            if (state.jumpPinObserver) { state.jumpPinObserver.disconnect(); state.jumpPinObserver = null; }
+            clearTimeout(state._jumpTimer);
+            state.isJumping = true;
+            state.jumpTarget = idx;
+            // Freeze the memory manager so intermediaries scrolled past don't
+            // mount + expand mid-flight and push the target down.
+            // Mount ONLY the target (no WINDOW_PADDING) so nothing above it
+            // grows while we travel; padding is restored after arrival.
+            for (const m of [...state.mountedEpisodes]) { if (m !== idx) unmountEpisode(m); }
+            if (!state.mountedEpisodes.has(idx)) mountEpisode(idx);
+            const far = state.currentFocusIdx == null || Math.abs(idx - state.currentFocusIdx) > 2;
+            const r = document.getElementById(`row-${idx}`);
+            if (r) r.scrollIntoView({ behavior: far ? 'auto' : 'smooth', block: 'start' });
+            // Re-pin while target content loads (skeleton 160px -> full grid).
+            // Target growth is downward so its top is stable, this only
+            // corrects nudges from ads/fonts/late layout.
+            const cDiv = document.getElementById(`content-${idx}`);
+            if (cDiv && 'ResizeObserver' in window) {
+                let lastPin = 0;
+                state.jumpPinObserver = new ResizeObserver(() => {
+                    if (!state.isJumping || state.jumpTarget !== idx) return;
+                    const now = Date.now();
+                    if (now - lastPin < 150) return;
+                    lastPin = now;
+                    document.getElementById(`row-${idx}`)?.scrollIntoView({ behavior: 'auto', block: 'start' });
+                });
+                state.jumpPinObserver.observe(cDiv);
+            }
+            state._jumpTimer = setTimeout(() => {
+                document.getElementById(`row-${idx}`)?.scrollIntoView({ behavior: 'auto', block: 'start' });
+                if (state.jumpPinObserver) { state.jumpPinObserver.disconnect(); state.jumpPinObserver = null; }
+                state.isJumping = false;
+                state.jumpTarget = null;
+                state.visibleEpIndices.clear();
+                state.visibleEpIndices.add(idx);
+                processActiveWindow();
+            }, far ? 600 : 1000);
         }
 
         function initMemoryManager() {
             const obs = new IntersectionObserver((e) => {
+                if (state.isJumping) return;
                 e.forEach(x => {
                     const i = parseInt(x.target.getAttribute('data-index'));
                     if (x.isIntersecting) state.visibleEpIndices.add(i);
@@ -605,6 +645,7 @@
         }
 
         function processActiveWindow() {
+            if (state.isJumping) return;
             const idxs = Array.from(state.visibleEpIndices); if (!idxs.length) return;
             const min = Math.min(...idxs), max = Math.max(...idxs);
             reconcileEpisodes(min, max);
