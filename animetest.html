@@ -403,6 +403,9 @@
             isJumping: false,
             jumpTarget: null,
             jumpPinObserver: null,
+            anchorObserver: null,
+            anchorIdx: null,
+            _anchorTimer: null,
             _jumpTimer: null,
             adClipChanges: 1,
             adLastRefresh: Date.now(),
@@ -540,7 +543,7 @@
                     <button onclick="openNav()" class="group flex items-center gap-3 w-full text-left focus:outline-none hover:bg-slate-900/50 px-2 py-0.5 rounded-lg transition-colors -ml-2">
                         <span id="indicator-${ep.index}" class="w-1 h-5 bg-slate-700 rounded-full block transition-colors"></span> 
                         <span class="text-lg font-bold text-slate-400 group-hover:text-blue-400 transition-colors">Episode ${ep.number}</span>
-                        <span class="material-symbols-rounded text-slate-600 group-hover:text-blue-400 text-lg transition-colors opacity-0 group-hover:opacity-100 transform translate-y-0.5">expand_more</span>
+                        <span class="material-symbols-rounded text-slate-500 group-hover:text-blue-400 text-lg transition-colors translate-y-0.5">expand_more</span>
                     </button>
                 </div>
                 <div id="content-${ep.index}" class="ep-content min-h-[160px]"></div>
@@ -566,9 +569,48 @@
         function populateNavGrid() { els.navGrid.innerHTML = state.episodesList.map(ep => `<button onclick="jumpToEpisode(${ep.index})" class="py-3 px-2 bg-slate-800 hover:bg-blue-600 hover:text-white rounded-lg border border-slate-700 transition-colors text-slate-300 font-medium text-sm flex flex-col items-center"><span>Ep ${ep.number}</span></button>`).join(''); }
         function openNav() { els.navModal.classList.remove('invisible', 'opacity-0'); }
         function closeNav() { els.navModal.classList.add('invisible', 'opacity-0'); }
+        function releaseAnchor() {
+            if (state.anchorObserver) { state.anchorObserver.disconnect(); state.anchorObserver = null; }
+            clearTimeout(state._anchorTimer);
+            state.anchorIdx = null;
+            window.removeEventListener('wheel', releaseAnchor);
+            window.removeEventListener('touchmove', releaseAnchor);
+        }
+
+        // Keeps row-idx visually pinned while content ABOVE it loads/expands
+        // (padding neighbor n-1, ads). Watches wrapper size; if the anchor row's
+        // top moved, shifts scroll by the same delta. Growth below is a no-op.
+        function anchorToEpisode(idx, ms = 4000) {
+            releaseAnchor();
+            const row = document.getElementById(`row-${idx}`);
+            if (!row || !('ResizeObserver' in window)) return;
+            state.anchorIdx = idx;
+            let lastTop = row.getBoundingClientRect().top;
+            let ticking = false;
+            state.anchorObserver = new ResizeObserver(() => {
+                if (state.anchorIdx !== idx) return;
+                if (ticking) return;
+                ticking = true;
+                requestAnimationFrame(() => {
+                    ticking = false;
+                    const r = document.getElementById(`row-${idx}`);
+                    if (!r || state.anchorIdx !== idx) return;
+                    const nt = r.getBoundingClientRect().top;
+                    const d = nt - lastTop;
+                    if (Math.abs(d) > 2) window.scrollBy(0, d);
+                    lastTop = r.getBoundingClientRect().top;
+                });
+            });
+            state.anchorObserver.observe(els.wrapper);
+            window.addEventListener('wheel', releaseAnchor, { passive: true });
+            window.addEventListener('touchmove', releaseAnchor, { passive: true });
+            state._anchorTimer = setTimeout(releaseAnchor, ms);
+        }
+
         async function jumpToEpisode(idx) {
             closeNav();
             if (state.jumpPinObserver) { state.jumpPinObserver.disconnect(); state.jumpPinObserver = null; }
+            releaseAnchor();
             clearTimeout(state._jumpTimer);
             state.isJumping = true;
             state.jumpTarget = idx;
@@ -603,6 +645,10 @@
                 state.jumpTarget = null;
                 state.visibleEpIndices.clear();
                 state.visibleEpIndices.add(idx);
+                // Anchor BEFORE restoring padding: mounting n-1 above grows
+                // content above the target and would otherwise shove it down
+                // out of view (the "lands on n-1" symptom).
+                anchorToEpisode(idx);
                 processActiveWindow();
             }, far ? 600 : 1000);
         }
