@@ -542,6 +542,7 @@
                 <div class="sticky top-16 bg-slate-950/90 backdrop-blur z-30 py-1 mb-1 border-b border-slate-800/50">
                     <button onclick="openNav()" class="group flex items-center gap-3 w-full text-left focus:outline-none hover:bg-slate-900/50 px-2 py-0.5 rounded-lg transition-colors -ml-2">
                         <span id="indicator-${ep.index}" class="w-1 h-5 bg-slate-700 rounded-full block transition-colors"></span> 
+                        <span class="material-symbols-rounded text-slate-500 group-hover:text-blue-400 text-xl transition-colors">format_list_bulleted</span>
                         <span class="text-lg font-bold text-slate-400 group-hover:text-blue-400 transition-colors">Episode ${ep.number}</span>
                         <span class="material-symbols-rounded text-slate-500 group-hover:text-blue-400 text-lg transition-colors translate-y-0.5">expand_more</span>
                     </button>
@@ -580,26 +581,25 @@
         // Keeps row-idx visually pinned while content ABOVE it loads/expands
         // (padding neighbor n-1, ads). Watches wrapper size; if the anchor row's
         // top moved, shifts scroll by the same delta. Growth below is a no-op.
-        function anchorToEpisode(idx, ms = 4000) {
+        function anchorToEpisode(idx, ms = 5000) {
             releaseAnchor();
             const row = document.getElementById(`row-${idx}`);
             if (!row || !('ResizeObserver' in window)) return;
             state.anchorIdx = idx;
             let lastTop = row.getBoundingClientRect().top;
-            let ticking = false;
             state.anchorObserver = new ResizeObserver(() => {
                 if (state.anchorIdx !== idx) return;
-                if (ticking) return;
-                ticking = true;
-                requestAnimationFrame(() => {
-                    ticking = false;
-                    const r = document.getElementById(`row-${idx}`);
-                    if (!r || state.anchorIdx !== idx) return;
-                    const nt = r.getBoundingClientRect().top;
-                    const d = nt - lastTop;
-                    if (Math.abs(d) > 2) window.scrollBy(0, d);
+                // Synchronous: RO fires after layout but before paint, so
+                // scrollBy here cancels the push in the same frame — the
+                // "land, shove down, yank back" flicker never reaches screen.
+                const r = document.getElementById(`row-${idx}`);
+                if (!r) return;
+                const nt = r.getBoundingClientRect().top;
+                const d = nt - lastTop;
+                if (Math.abs(d) > 2) {
+                    window.scrollBy(0, d);
                     lastTop = r.getBoundingClientRect().top;
-                });
+                }
             });
             state.anchorObserver.observe(els.wrapper);
             window.addEventListener('wheel', releaseAnchor, { passive: true });
@@ -638,6 +638,11 @@
                 });
                 state.jumpPinObserver.observe(cDiv);
             }
+            // Far jumps are instant: anchor right away so ad/skeleton growth
+            // during the settle wait is cancelled invisibly and the final
+            // snap below becomes a no-op. Near jumps use smooth animation,
+            // which moves row-top by design, so anchor only after it ends.
+            if (far) anchorToEpisode(idx);
             state._jumpTimer = setTimeout(() => {
                 document.getElementById(`row-${idx}`)?.scrollIntoView({ behavior: 'auto', block: 'start' });
                 if (state.jumpPinObserver) { state.jumpPinObserver.disconnect(); state.jumpPinObserver = null; }
