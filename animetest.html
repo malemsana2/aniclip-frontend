@@ -405,6 +405,7 @@
             jumpPinObserver: null,
             anchorObserver: null,
             anchorIdx: null,
+            suppressAbove: null,
             _anchorTimer: null,
             _jumpTimer: null,
             adClipChanges: 1,
@@ -607,6 +608,18 @@
             state._anchorTimer = setTimeout(releaseAnchor, ms);
         }
 
+        // While set (after a nav jump), episodes above the target are never
+        // mounted, so nothing above can grow and shove the target down.
+        // Cleared on the next user-initiated scroll, when normal
+        // virtualization resumes.
+        function clearNavSuppress() {
+            if (state.suppressAbove == null) return;
+            if (state.activeModal) return;
+            if (els.navModal && !els.navModal.classList.contains('invisible')) return;
+            state.suppressAbove = null;
+            processActiveWindow();
+        }
+
         async function jumpToEpisode(idx) {
             closeNav();
             if (state.jumpPinObserver) { state.jumpPinObserver.disconnect(); state.jumpPinObserver = null; }
@@ -614,10 +627,11 @@
             clearTimeout(state._jumpTimer);
             state.isJumping = true;
             state.jumpTarget = idx;
+            state.suppressAbove = idx;
             // Freeze the memory manager so intermediaries scrolled past don't
             // mount + expand mid-flight and push the target down.
-            // Mount ONLY the target (no WINDOW_PADDING) so nothing above it
-            // grows while we travel; padding is restored after arrival.
+            // Mount ONLY the target (no WINDOW_PADDING). Episodes above stay
+            // suppressed until the user scrolls (see suppressAbove).
             for (const m of [...state.mountedEpisodes]) { if (m !== idx) unmountEpisode(m); }
             if (!state.mountedEpisodes.has(idx)) mountEpisode(idx);
             const far = state.currentFocusIdx == null || Math.abs(idx - state.currentFocusIdx) > 2;
@@ -663,12 +677,25 @@
                 if (state.isJumping) return;
                 e.forEach(x => {
                     const i = parseInt(x.target.getAttribute('data-index'));
+                    // Suppressed: never track rows above the nav target,
+                    // so the padding restore can't mount them.
+                    if (state.suppressAbove != null && i < state.suppressAbove) {
+                        state.visibleEpIndices.delete(i);
+                        return;
+                    }
                     if (x.isIntersecting) state.visibleEpIndices.add(i);
                     else state.visibleEpIndices.delete(i);
                 });
                 if (state.visibleEpIndices.size > 0) processActiveWindow();
             }, { rootMargin: '200px' });
             document.querySelectorAll('.episode-row').forEach(r => obs.observe(r));
+            // Any user scroll ends the suppression and resumes normal
+            // virtualization (mounting above as needed while scrolling).
+            window.addEventListener('wheel', clearNavSuppress, { passive: true });
+            window.addEventListener('touchmove', clearNavSuppress, { passive: true });
+            window.addEventListener('keydown', (e) => {
+                if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(e.key)) clearNavSuppress();
+            });
         }
 
         function updatePrioritiesAndCancelBackground() {
@@ -705,7 +732,10 @@
 
         function reconcileEpisodes(minIdx, maxIdx) {
             const targetWindow = new Set();
-            for (let i = Math.max(0, minIdx - WINDOW_PADDING); i <= Math.min(state.episodesList.length - 1, maxIdx + WINDOW_PADDING); i++) {
+            let lo = Math.max(0, minIdx - WINDOW_PADDING);
+            // Nav suppression: never (re)mount anything above the target.
+            if (state.suppressAbove != null) lo = Math.max(lo, state.suppressAbove);
+            for (let i = lo; i <= Math.min(state.episodesList.length - 1, maxIdx + WINDOW_PADDING); i++) {
                 targetWindow.add(i);
             }
             for (const idx of state.mountedEpisodes) {
