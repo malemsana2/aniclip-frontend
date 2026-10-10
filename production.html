@@ -30,11 +30,31 @@
             transition: all 0.3s ease;
         }
 
-        .chunk.pending {
+        .chunk.pending, .chunk.download_pending {
             background: #1e293b;
         }
 
-        .chunk.assigned {
+        .chunk.downloading {
+            background: #eab308;
+            box-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
+            animation: pulse 2s infinite;
+        }
+
+        .chunk.raw_ready {
+            background: #06b6d4;
+        }
+
+        .chunk.processing {
+            background: #a855f7;
+            box-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
+            animation: pulse 1.5s infinite;
+        }
+
+        .chunk.processed_ready {
+            background: #f97316;
+        }
+
+        .chunk.assigned, .chunk.uploading {
             background: #3b82f6;
             box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
             animation: pulse 2s infinite;
@@ -42,6 +62,17 @@
 
         .chunk.completed {
             background: #10b981;
+        }
+
+        .chunk.prefetch_downloading {
+            background: transparent;
+            border: 1px dashed rgba(234, 179, 8, 0.8);
+            animation: pulse 2s infinite;
+        }
+
+        .chunk.prefetch_ready {
+            background: #713f12;
+            border: 1px solid #eab308;
         }
 
         @keyframes pulse {
@@ -203,10 +234,10 @@
             </div>
             <div class="h-4 w-px bg-white/10"></div>
             <div class="flex items-center gap-6 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                <a href="admin" class="hover:text-white transition-colors">Admin Panel</a>
-                <a href="production" class="text-blue-400">Production Console</a>
-                <a href="storage" class="hover:text-white transition-colors">Storage Console</a>
-                <a href="ad-dash" class="hover:text-white transition-colors">Ad Revenue</a>
+                <a href="admin.html" class="hover:text-white transition-colors">Admin Panel</a>
+                <a href="production.html" class="text-blue-400">Production Console</a>
+                <a href="storage.html" class="hover:text-white transition-colors">Storage Console</a>
+                <a href="ad-dash.html" class="hover:text-white transition-colors">Ad Revenue</a>
             </div>
         </div>
         <div class="flex items-center gap-4">
@@ -288,7 +319,6 @@
                         <div id="dot-1" class="step-dot w-2 h-2 rounded-full active"></div>
                         <div id="dot-2" class="step-dot w-2 h-2 rounded-full"></div>
                         <div id="dot-3" class="step-dot w-2 h-2 rounded-full"></div>
-                        <div id="dot-4" class="step-dot w-2 h-2 rounded-full"></div>
                     </div>
                     <h2 id="modal-title" class="text-xs font-black text-white uppercase tracking-widest">Search Anime
                     </h2>
@@ -311,89 +341,20 @@
                 <div id="search-results" class="grid grid-cols-2 gap-3 overflow-y-auto pr-2"></div>
             </div>
 
-            <!-- Step 2: Edit Info -->
             <div id="step-2" class="hidden p-8 flex flex-col h-full overflow-hidden">
-                <div class="flex gap-8 h-full overflow-hidden pb-4">
-                    <!-- Left: Metadata Fields -->
-                    <div class="w-2/3 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
-                        <div>
-                            <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Primary Title</label>
-                            <input type="text" id="edit-title" class="input-dark" placeholder="Anime Title">
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">English Title</label>
-                                <input type="text" id="edit-title-english" class="input-dark" placeholder="English Title">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Japanese Title</label>
-                                <input type="text" id="edit-title-japanese" class="input-dark" placeholder="Japanese Title">
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Poster URL</label>
-                                <input type="text" id="edit-poster-url" class="input-dark" placeholder="https://example.com/poster.jpg" oninput="updatePosterPreview()">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Episode Count</label>
-                                <input type="number" id="edit-episodes" class="input-dark" placeholder="12" min="1">
-                            </div>
-                        </div>
-                        <div class="flex-grow flex flex-col min-h-[120px]">
-                            <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Synopsis / Description</label>
-                            <textarea id="edit-description" class="input-dark flex-grow resize-none" placeholder="Enter series description..."></textarea>
-                        </div>
-                    </div>
-
-                    <!-- Right: Live Poster Preview -->
-                    <div class="w-1/3 flex flex-col items-center justify-center bg-slate-950/40 rounded-2xl border border-white/5 p-6 relative">
-                        <div class="absolute top-4 left-4 flex items-center gap-2">
-                            <span class="material-symbols-rounded text-blue-500 text-sm">visibility</span>
-                            <span class="text-[9px] uppercase text-slate-400 font-black tracking-widest">Poster Preview</span>
-                        </div>
-                        <div class="w-48 h-72 rounded-2xl overflow-hidden bg-slate-900 border border-white/10 shadow-xl relative aspect-[2/3] group mt-4 flex items-center justify-center">
-                            <img id="edit-poster-preview" src="" class="w-full h-full object-cover hidden" />
-                            <div id="edit-poster-placeholder" class="w-full h-full flex flex-col items-center justify-center text-slate-600 gap-2">
-                                <span class="material-symbols-rounded text-3xl">image</span>
-                                <span class="text-[9px] font-black uppercase tracking-wider">No Image</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Footer buttons for Step 2 -->
-                <div class="border-t border-white/5 pt-4 mt-auto flex justify-between shrink-0">
-                    <button onclick="setStep(1)" class="px-6 py-2.5 rounded-xl font-black text-[10px] text-slate-500 hover:text-white uppercase tracking-widest hover:bg-white/5 transition-all flex items-center gap-2">
-                        <span class="material-symbols-rounded text-sm">arrow_back</span> Back
-                    </button>
-                    <button onclick="saveAndGoToStep3()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all flex items-center gap-2">
-                        Continue <span class="material-symbols-rounded text-sm">arrow_forward</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Step 3: Source Discovery -->
-            <div id="step-3" class="hidden p-8 flex flex-col h-full overflow-hidden">
                 <div class="flex gap-3 mb-6 shrink-0">
                     <input type="text" id="torrent-search-input" onkeydown="if(event.key==='Enter') fetchTorrents()"
                         class="input-dark flex-grow" placeholder="Search for magnets (e.g. Solo Leveling S01)...">
                     <button onclick="fetchTorrents()"
                         class="bg-blue-600 hover:bg-blue-500 transition-colors px-10 rounded-xl font-black text-[10px] uppercase tracking-widest">Re-Scrape</button>
                 </div>
-                <div id="torrent-results" class="space-y-3 overflow-y-auto pr-2 flex-grow mb-4"></div>
-                <div class="border-t border-white/5 pt-4 mt-auto flex justify-between shrink-0">
-                    <button onclick="setStep(2)" class="px-6 py-2.5 rounded-xl font-black text-[10px] text-slate-500 hover:text-white uppercase tracking-widest hover:bg-white/5 transition-all flex items-center gap-2">
-                        <span class="material-symbols-rounded text-sm">arrow_back</span> Back to Info
-                    </button>
-                </div>
+                <div id="torrent-results" class="space-y-3 overflow-y-auto pr-2"></div>
             </div>
 
-            <!-- Step 4: Selection Bridge -->
-            <div id="step-4" class="hidden p-8 flex flex-col h-full overflow-hidden">
+            <div id="step-3" class="hidden p-8 flex flex-col h-full overflow-hidden">
                 <div class="flex justify-between items-center mb-6 pb-6 border-b border-white/5">
                     <div class="flex items-center gap-4">
-                        <button onclick="setStep(3)"
+                        <button onclick="setStep(2)"
                             class="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors flex items-center gap-2 mr-4">
                             <span class="material-symbols-rounded">arrow_back</span> Source Settings
                         </button>
@@ -491,7 +452,7 @@
     </div>
 
     <script>
-        const API_URL = 'https://api.aniclips.site/api';
+        const API_URL = 'https://aniclip-backend.onrender.com/api';
         const ADMIN_KEY = localStorage.getItem('aniclip_admin_key');
 
         let selectedAnime = null;
@@ -523,53 +484,13 @@
         }
 
         function setStep(n) {
-            [1, 2, 3, 4].forEach(i => {
-                const el = document.getElementById(`step-${i}`);
-                if (el) el.classList.toggle('hidden', i !== n);
+            [1, 2, 3].forEach(i => {
+                document.getElementById(`step-${i}`).classList.toggle('hidden', i !== n);
                 const dot = document.getElementById(`dot-${i}`);
-                if (dot) {
-                    dot.className = `step-dot w-2 h-2 rounded-full ${i === n ? 'active' : (i < n ? 'bg-blue-900' : 'bg-slate-700')}`;
-                }
+                dot.className = `step-dot w-2 h-2 rounded-full ${i === n ? 'active' : (i < n ? 'bg-blue-900' : 'bg-slate-700')}`;
             });
-            const titles = ["Discover Series", "Edit Info", "Source Discovery", "Selection Bridge"];
+            const titles = ["Discover Series", "Source Discovery", "Selection Bridge"];
             document.getElementById('modal-title').innerText = titles[n - 1];
-        }
-
-        function updatePosterPreview() {
-            const url = document.getElementById('edit-poster-url').value.trim();
-            const previewImg = document.getElementById('edit-poster-preview');
-            const placeholder = document.getElementById('edit-poster-placeholder');
-            if (url) {
-                previewImg.src = url;
-                previewImg.classList.remove('hidden');
-                placeholder.classList.add('hidden');
-            } else {
-                previewImg.src = "";
-                previewImg.classList.add('hidden');
-                placeholder.classList.remove('hidden');
-            }
-        }
-
-        function saveAndGoToStep3() {
-            if (!selectedAnime) return;
-            selectedAnime.title = document.getElementById('edit-title').value.trim();
-            selectedAnime.title_english = document.getElementById('edit-title-english').value.trim();
-            selectedAnime.title_japanese = document.getElementById('edit-title-japanese').value.trim();
-            
-            if (!selectedAnime.images) selectedAnime.images = { jpg: {} };
-            if (!selectedAnime.images.jpg) selectedAnime.images.jpg = {};
-            selectedAnime.images.jpg.large_image_url = document.getElementById('edit-poster-url').value.trim();
-            selectedAnime.images.jpg.small_image_url = document.getElementById('edit-poster-url').value.trim();
-            
-            const epsVal = parseInt(document.getElementById('edit-episodes').value);
-            selectedAnime.episodes = isNaN(epsVal) ? null : epsVal;
-            selectedAnime.synopsis = document.getElementById('edit-description').value.trim();
-            
-            // Sync the search input for step 3 torrent scraping
-            document.getElementById('torrent-search-input').value = selectedAnime.title;
-            
-            setStep(3);
-            fetchTorrents();
         }
 
         async function searchJikan() {
@@ -651,17 +572,9 @@
                 title_japanese: item.title_japanese || item.title,
                 synopsis: item.synopsis || ""
             };
-            
-            // Populate step 2 fields
-            document.getElementById('edit-title').value = selectedAnime.title || "";
-            document.getElementById('edit-title-english').value = selectedAnime.title_english || "";
-            document.getElementById('edit-title-japanese').value = selectedAnime.title_japanese || "";
-            document.getElementById('edit-poster-url').value = selectedAnime.images?.jpg?.large_image_url || selectedAnime.images?.jpg?.small_image_url || "";
-            document.getElementById('edit-episodes').value = selectedAnime.episodes || "";
-            document.getElementById('edit-description').value = selectedAnime.synopsis || "";
-            
-            updatePosterPreview();
+            document.getElementById('torrent-search-input').value = selectedAnime.title;
             setStep(2);
+            fetchTorrents();
         }
 
         async function fetchTorrents() {
@@ -691,7 +604,7 @@
         function selectTorrent(id, magnet) {
             selectedMagnet = magnet;
             window._selectedTorrentId = id;
-            setStep(4);
+            setStep(3);
             initMappingBridge();
         }
 
@@ -886,7 +799,7 @@
                         title_japanese: selectedAnime.title_japanese,
                         slug: selectedAnime.title.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
                         poster_url: selectedAnime.images.jpg.large_image_url,
-                        description: selectedAnime.synopsis || "",
+                        description: "",
                         source_magnet: selectedMagnet,
                         mappings: mappings
                     }),
@@ -961,7 +874,7 @@
                 return;
             }
             pane.innerHTML = entries.map(([slug, p]) => {
-                const done = p.tasks.filter(t => t.status === 'COMPLETED').length;
+                const done = p.tasks.filter(t => (t.stage_status === 'COMPLETED' || t.status === 'COMPLETED')).length;
                 const total = p.tasks.length;
                 const pct = Math.round((done / total) * 100) || 0;
                 const animeId = p.id;
@@ -994,7 +907,12 @@
                         </div>
                         <div class="text-[11px] font-black text-blue-500 font-mono">${done}/${total} (${pct}%)</div>
                     </div>
-                    <div class="chunk-container">${p.tasks.sort((a, b) => a.ep_num - b.ep_num).map(t => `<div class="chunk ${t.status.toLowerCase()}" title="Ep ${t.ep_num}"></div>`).join('')}</div>
+                    <div class="chunk-container">${p.tasks.sort((a, b) => a.ep_num - b.ep_num).map(t => {
+                        const stage = (t.stage_status || t.status || 'DOWNLOAD_PENDING').toLowerCase();
+                        const stageLabel = stage.replace('_', ' ').toUpperCase();
+                        const owner = (stage === 'prefetch_downloading' || stage === 'prefetch_ready') && t.worker_id ? ` · RESERVED ${t.worker_id}` : '';
+                        return `<div class="chunk ${stage}" title="Ep ${t.ep_num}: ${stageLabel}${owner}"></div>`;
+                    }).join('')}</div>
                 </div>`;
             }).join('');
         }
@@ -1003,7 +921,7 @@
             const list = document.getElementById('fleet-list');
             let working = 0, idle = 0, offline = 0;
 
-            // Filter: Only show Titan workers here. Sync Guardians belong in storage.
+            // Filter: Only show Titan workers here. Sync Guardians belong in storage.html.
             const titanFleet = fleet.filter(w => !w.id.startsWith('Sync-worker-'));
 
             if (titanFleet.length === 0) {
@@ -1016,10 +934,13 @@
                     else idle++;
 
                     const escapedData = JSON.stringify(w).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+                    const resCount = (w.reservations || []).length;
+                    const resDownloading = (w.reservations || []).find(r => r.stage_status === 'PREFETCH_DOWNLOADING');
                     return `<div onclick="openWorkerModal(${escapedData})" class="cursor-pointer p-4 bg-slate-950/50 border border-white/5 hover:border-blue-500/30 rounded-2xl transition-all ${isOffline ? 'opacity-40' : ''}">
                         <div class="flex justify-between text-[10px] font-black uppercase"><span class="text-slate-300 font-mono text-[9px]">${w.id}</span><span class="${isOffline ? 'text-red-500' : (w.status !== 'IDLE' ? 'text-blue-500 animate-pulse' : 'text-slate-600')}">${isOffline ? 'OFFLINE' : w.status}</span></div>
                         <div class="text-[9px] text-slate-500 mt-1 truncate italic">${w.status_message || 'Standby...'}</div>
                         ${!isOffline && w.status !== 'IDLE' ? `<div class="w-full bg-slate-900 h-1 rounded-full mt-3 overflow-hidden"><div class="bg-blue-600 h-full transition-all" style="width: ${w.progress || 0}%"></div></div>` : ''}
+                        ${resCount ? `<div class="text-[9px] text-yellow-500/90 mt-2 font-mono truncate">📦 ${resCount} reserved${resDownloading && resDownloading.dl_progress ? ` · dl ${Math.round(resDownloading.dl_progress)}%` : ''}</div>` : ''}
                     </div>`;
                 }).join('');
             }
@@ -1060,6 +981,16 @@
                             <span class="text-[8px] uppercase text-slate-500 font-bold">Last Heartbeat</span>
                             <span class="text-slate-400 text-[10px] font-mono">${new Date(w.last_heartbeat).toLocaleString()}</span>
                         </div>
+                        ${(w.reservations || []).length ? `
+                        <div class="bg-slate-950/50 px-4 py-3 rounded-lg border border-yellow-500/20 flex flex-col gap-2">
+                            <span class="text-[8px] uppercase text-yellow-500/80 font-bold">Prefetch Reservations (${w.reservations.length}) — no heartbeat by design</span>
+                            ${w.reservations.map(r => `
+                            <div class="flex justify-between items-center gap-2 text-[10px] font-mono">
+                                <span class="text-slate-300 truncate">#${r.task_id} ${r.anime_title || r.anime_title_romaji || ''} Ep ${r.episode_num ?? '?'}</span>
+                                <span class="text-yellow-500/80 shrink-0">${r.stage_status === 'PREFETCH_READY' ? 'READY' : `DL ${Math.round(r.dl_progress || 0)}%`}</span>
+                                <button onclick="event.stopPropagation(); releaseReservation(${r.task_id})" class="text-red-400 hover:text-red-300 text-[9px] uppercase shrink-0">Release</button>
+                            </div>`).join('')}
+                        </div>` : ''}
                     </div>
                 </div>`;
             document.getElementById('worker-modal').classList.remove('hidden');
@@ -1144,6 +1075,15 @@
             } catch (err) { alert(err.message); }
         }
 
+        async function releaseReservation(taskId) {
+            if (!confirm(`Release prefetch reservation for task ${taskId}? It returns to PENDING for any worker.`)) return;
+            try {
+                await safeFetch(`/production/worker/tasks/${taskId}/release-reservation`, { method: 'POST', body: '{}' });
+                closeWorkerModal();
+                refresh();
+            } catch (err) { alert(err.message); }
+        }
+
         async function openReviewInbox() {
             document.getElementById('review-section').classList.remove('hidden');
             document.getElementById('review-section').classList.add('flex');
@@ -1182,7 +1122,7 @@
             selectedReviewId = id;
             document.getElementById('approve-btn').disabled = false;
             document.getElementById('review-preview-container').innerHTML = `
-                <iframe src="./anime?slug=${slug}" class="w-full h-full border-none bg-[#020617]"></iframe>
+                <iframe src="./anime.html?slug=${slug}" class="w-full h-full border-none bg-[#020617]"></iframe>
                 <div class="absolute inset-0 pointer-events-none shadow-[inset_0_0_100px_rgba(0,0,0,0.8)] border border-blue-500/20"></div>`;
         }
 
