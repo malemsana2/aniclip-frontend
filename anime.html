@@ -8,8 +8,8 @@
     <link rel="stylesheet" href="dist/tailwind.css">
     <link rel="icon" type="image/svg+xml" href="icon.svg">
     <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&text=abcdefghijklmnopqrstuvwxyz_&display=swap"
+        media="print" onload="this.media='all'" />
 
     <!-- Adsterra in page push in (Social bar) - async so it never blocks first paint -->
     <script async src="https://pl30794986.profitableratecpmnetwork.com/e7/d6/57/e7d65715dc9c4d8e9f6b6776a81f6e99.js"></script>
@@ -41,9 +41,20 @@
             aspect-ratio: 4 / 3;
         }
 
-        .material-symbols-rounded {
+        /* :where() keeps 24px as default but lets Tailwind text-* sizes win (same as Play CDN order) */
+        :where(.material-symbols-rounded) {
             font-size: 24px;
         }
+
+        /* Self-contained loading spinner: no icon-font or Tailwind dependency,
+           so it renders even before async fonts arrive */
+        .css-spinner {
+            width: 22px; height: 22px; border-radius: 9999px; flex-shrink: 0;
+            border: 3px solid rgba(255,255,255,.25); border-top-color: #fff;
+            animation: css-spin .8s linear infinite;
+        }
+        .css-spinner-sm { width: 16px; height: 16px; border-width: 2px; }
+        @keyframes css-spin { to { transform: rotate(360deg); } }
 
         #episodes-wrapper {
             transform: translateZ(0);
@@ -785,6 +796,82 @@
         const pendingKeyRequests = {};
         const blobCache = {};
 
+        // --- TIERED BLOB LRU (caps decrypted blobs held in RAM) ---
+        // hover: 100 entries | preview: 10 entries | hq: 2 entries | thumbnail: 50MB (practically uncapped)
+        const BLOB_TIER_CAPS = { hover: 100, preview: 10, hq: 2, thumbBytes: 50 * 1024 * 1024 };
+        const blobMeta = new Map(); // originalUrl -> { tier, size, last }
+        const pinnedBlobs = new Set(); // completed user downloads: never evict mid-save
+        let blobLruClock = 0;
+        let thumbBlobBytes = 0;
+
+        function classifyBlobTier(url, type) {
+            if (type === 'image' || (url && url.endsWith('.ebp'))) return 'thumbnail';
+            if (url.includes('_hover.bin') || url.includes('hover')) return 'hover';
+            if (url.includes('_prev.bin') || url.includes('preview')) return 'preview';
+            return 'hq';
+        }
+
+        // A blob is in use if it is the player source, referenced by any live
+        // media element, or a pinned user download. Eviction always skips these.
+        function isBlobPinned(url) {
+            if (pinnedBlobs.has(url)) return true;
+            try {
+                if (typeof els !== 'undefined' && els.player && els.player.src === url) return true;
+                if (document.querySelector(`video[src="${url}"], img[src="${url}"]`)) return true;
+            } catch (e) { /* selector/els unavailable: treat as unpinned */ }
+            return false;
+        }
+
+        function evictBlobUrl(url) {
+            const blobUrl = blobCache[url];
+            const meta = blobMeta.get(url);
+            if (meta && meta.tier === 'thumbnail') thumbBlobBytes = Math.max(0, thumbBlobBytes - meta.size);
+            blobMeta.delete(url);
+            delete blobCache[url];
+            for (const arr of state.blobRegistry.values()) {
+                const i = arr.findIndex(e => e.originalUrl === url);
+                if (i >= 0) arr.splice(i, 1);
+            }
+            if (blobUrl) { try { URL.revokeObjectURL(blobUrl); } catch (e) { } }
+        }
+
+        function enforceBlobTierCap(tier) {
+            if (tier === 'thumbnail') {
+                while (thumbBlobBytes > BLOB_TIER_CAPS.thumbBytes) {
+                    let oldestUrl = null, oldestLast = Infinity;
+                    for (const [u, m] of blobMeta) {
+                        if (m.tier !== 'thumbnail' || isBlobPinned(u)) continue;
+                        if (m.last < oldestLast) { oldestLast = m.last; oldestUrl = u; }
+                    }
+                    if (!oldestUrl) break;
+                    evictBlobUrl(oldestUrl);
+                }
+                return;
+            }
+            const cap = BLOB_TIER_CAPS[tier];
+            if (cap == null) return;
+            let entries = [...blobMeta].filter(([, m]) => m.tier === tier).sort((a, b) => a[1].last - b[1].last);
+            while (entries.length > cap) {
+                const victim = entries.find(([u]) => !isBlobPinned(u));
+                if (!victim) break;
+                evictBlobUrl(victim[0]);
+                entries = entries.filter(([u]) => u !== victim[0]);
+            }
+        }
+
+        function trackBlobUrl(url, tier, size) {
+            const prev = blobMeta.get(url);
+            if (prev && prev.tier === 'thumbnail') thumbBlobBytes -= prev.size;
+            blobMeta.set(url, { tier, size, last: ++blobLruClock });
+            if (tier === 'thumbnail') thumbBlobBytes += size;
+            enforceBlobTierCap(tier);
+        }
+
+        function touchBlobUrl(url) {
+            const m = blobMeta.get(url);
+            if (m) m.last = ++blobLruClock;
+        }
+
         // --- MAIN API FIRST, KEY BANDAGE FALLBACK ---
         async function getEpisodeKey(mal_id, ep_num) {
             const relPath = `/episodes/${encodeURIComponent(mal_id)}/${encodeURIComponent(ep_num)}/key`;
@@ -859,11 +946,13 @@
                 task.status = 'DOWNLOADING';
                 this.notify(url);
                 try {
+                    const dlTier = /_HQ$/.test(filename) ? 'hq' : 'preview';
                     const blobUrl = await DecryptionManager.getBlobUrl(url, clipId, 0, null, (p) => {
                         task.progress = p;
                         this.notify(url);
-                    });
+                    }, null, dlTier);
                     task.blobUrl = blobUrl;
+                    pinnedBlobs.add(blobUrl); // user download: never evict mid-save
                     task.status = 'COMPLETE';
                     task.progress = 100;
                     this.notify(url);
@@ -922,10 +1011,11 @@
 
         const DecryptionManager = {
             queue: [], activeCount: 0, MAX_CONCURRENT: 5, running: {}, internalControllers: {},
-            async getBlobUrl(url, clipId, priority = 3, abortSignal = null, onProgress = null, episodeIdx = null) {
+            async getBlobUrl(url, clipId, priority = 3, abortSignal = null, onProgress = null, episodeIdx = null, tierHint = null) {
                 if (!url) return "";
                 if (!url.endsWith('.bin') && !url.endsWith('.ebp')) return url;
                 if (blobCache[url]) {
+                    touchBlobUrl(url);
                     if (onProgress) onProgress(100);
                     return blobCache[url];
                 }
@@ -953,7 +1043,7 @@
                     return new Promise((resolve, reject) => task.listeners.push({ resolve, reject }));
                 }
                 return new Promise((resolve, reject) => {
-                    this.queue.push({ url, clipId, type: url.endsWith('.ebp') ? 'image' : 'video', priority, abortSignal, onProgress, episodeIdx, listeners: [{ resolve, reject }] });
+                    this.queue.push({ url, clipId, type: url.endsWith('.ebp') ? 'image' : 'video', priority, abortSignal, onProgress, episodeIdx, tierHint: tierHint || classifyBlobTier(url, url.endsWith('.ebp') ? 'image' : 'video'), listeners: [{ resolve, reject }] });
                     this.queue.sort((a, b) => a.priority - b.priority);
                     this._process();
                 });
@@ -983,7 +1073,7 @@
                 const abortHandler = () => internalCtrl.abort();
                 if (task.abortSignal) task.abortSignal.addEventListener('abort', abortHandler);
                 this.internalControllers[task.url] = { controller: internalCtrl, priority: task.priority, episodeIdx: task.episodeIdx };
-                this.running[task.url] = this._decrypt(task.url, task.clipId, task.type, internalCtrl.signal, task.onProgress, task.episodeIdx);
+                this.running[task.url] = this._decrypt(task.url, task.clipId, task.type, internalCtrl.signal, task.onProgress, task.episodeIdx, task.tierHint);
                 try {
                     const result = await this.running[task.url];
                     task.listeners.forEach(l => l.resolve(result));
@@ -997,7 +1087,7 @@
                     this._process();
                 }
             },
-            async _decrypt(url, clipId, type, abortSignal, onProgress, episodeIdx) {
+            async _decrypt(url, clipId, type, abortSignal, onProgress, episodeIdx, tierHint) {
                 const parts = clipId.split('-');
                 const epCrypto = await getEpisodeCrypto(parts[0], parts[1]);
                 const clipIv = await deriveClipIV(epCrypto.ivSeed, clipId);
@@ -1088,6 +1178,7 @@
                 const blob = new Blob([decryptedBuffer], { type: mimeType });
                 const blobUrl = URL.createObjectURL(blob);
                 blobCache[url] = blobUrl;
+                trackBlobUrl(url, tierHint || classifyBlobTier(url, type), blob.size);
                 if (episodeIdx !== null && episodeIdx !== undefined) {
                     if (!state.blobRegistry.has(episodeIdx)) state.blobRegistry.set(episodeIdx, []);
                     state.blobRegistry.get(episodeIdx).push({ originalUrl: url, blobUrl });
@@ -1101,10 +1192,10 @@
         async function playPreview(el, hoverUrl, clipId, epIdx) {
             let v = el.querySelector('video');
             if (!v) {
-                el.innerHTML += `<div class="absolute inset-0 flex items-center justify-center bg-black/80 z-10"><span class="material-symbols-rounded animate-spin text-white">progress_activity</span></div>`;
+                el.innerHTML += `<div class="absolute inset-0 flex items-center justify-center bg-black/80 z-10"><div class="css-spinner"></div></div>`;
                 hoverControllers[clipId] = new AbortController();
                 try {
-                    const decryptedUrl = await DecryptionManager.getBlobUrl(hoverUrl, clipId, 2, hoverControllers[clipId].signal, null, epIdx);
+                    const decryptedUrl = await DecryptionManager.getBlobUrl(hoverUrl, clipId, 2, hoverControllers[clipId].signal, null, epIdx, 'hover');
                     el.querySelector('.absolute.inset-0.bg-black\\/80')?.remove();
                     el.insertAdjacentHTML('beforeend', `<video src="${decryptedUrl}" loop muted playsinline class="absolute inset-0 w-full h-full object-cover z-0"></video>`);
                     v = el.querySelector('video');
@@ -1144,7 +1235,7 @@
             if (!rawUrl || !img || !img.classList.contains('hidden')) return;
             const signal = state.epAbortControllers.get(epIdx)?.signal ?? null;
             if (signal && signal.aborted) return;
-            DecryptionManager.getBlobUrl(rawUrl, cId, priority, signal, null, epIdx).then(decrypted => {
+            DecryptionManager.getBlobUrl(rawUrl, cId, priority, signal, null, epIdx, 'thumbnail').then(decrypted => {
                 if (!decrypted || !card.isConnected) return;
                 img.src = decrypted;
                 img.classList.remove('hidden');
@@ -1449,7 +1540,7 @@
             </div>`;
             }).join('');
             els.slider.querySelectorAll('.slider-thumb').forEach(img => {
-                DecryptionManager.getBlobUrl(img.dataset.src, img.dataset.clipId, 3, null, null, epIdx).then(dec => {
+                DecryptionManager.getBlobUrl(img.dataset.src, img.dataset.clipId, 3, null, null, epIdx, 'thumbnail').then(dec => {
                     img.src = dec; img.classList.remove('hidden'); img.nextElementSibling?.remove();
                 }).catch(() => { });
             });
@@ -1525,7 +1616,7 @@
                 DownloadTasks.subscribe(rawUrl, (task) => {
                     if (task.status === 'DOWNLOADING') {
                         progressLayer.style.width = `${task.progress}%`;
-                        content.innerHTML = `<span class="material-symbols-rounded animate-spin text-lg">progress_activity</span> Downloading... ${task.progress}%`;
+                        content.innerHTML = `<div class="css-spinner css-spinner-sm"></div> Downloading... ${task.progress}%`;
                         btn.disabled = true;
                     } else if (task.status === 'COMPLETE') {
                         progressLayer.style.width = "100%";
@@ -1544,7 +1635,7 @@
 
             try {
                 const epIdx = ep ? ep.index : null;
-                const decryptedUrl = await DecryptionManager.getBlobUrl(previewRaw, clip.id, 1, null, null, epIdx);
+                const decryptedUrl = await DecryptionManager.getBlobUrl(previewRaw, clip.id, 1, null, null, epIdx, 'preview');
                 if (!decryptedUrl) throw new Error("Decryption returned empty");
                 els.player.src = decryptedUrl;
                 document.getElementById('preview-filename').textContent = baseFileName + '.mp4';
@@ -1553,7 +1644,7 @@
                 if (state.autoplay && activeCtx.idx < total - 1) {
                     const nextClip = clips[activeCtx.idx + 1];
                     const nextPreviewRaw = nextClip?.sources?.preview || nextClip?.video_url || "";
-                    if (nextPreviewRaw) DecryptionManager.getBlobUrl(nextPreviewRaw, nextClip.id, 4, null, null, epIdx).catch(() => { });
+                    if (nextPreviewRaw) DecryptionManager.getBlobUrl(nextPreviewRaw, nextClip.id, 4, null, null, epIdx, 'preview').catch(() => { });
                 }
             } catch (e) {
                 document.getElementById('preview-filename').textContent = "Decryption Failed";
@@ -1687,7 +1778,7 @@
             if (!msg) return;
 
             btn.disabled = true;
-            btn.innerHTML = `<span class="material-symbols-rounded animate-spin text-base">progress_activity</span> Sending...`;
+            btn.innerHTML = `<div class="css-spinner css-spinner-sm"></div> Sending...`;
 
             let currentEpNum = null;
             if (activeCtx && activeCtx.epId) {
@@ -1750,11 +1841,9 @@
                     </p>
                     <div class="flex gap-4">
                         <a target="_blank" href="https://t.me/+QTrHC5GUA9w5NjI9" title="Telegram"
-                            class="w-10 h-10 bg-slate-900 border border-white/5 rounded-xl flex items-center justify-center text-slate-400 hover:text-[#26A5E4] hover:border-[#26A5E4]/30 transition-all shadow-lg"><i
-                                class="fa-brands fa-telegram text-xl"></i></a>
+                            class="w-10 h-10 bg-slate-900 border border-white/5 rounded-xl flex items-center justify-center text-slate-400 hover:text-[#26A5E4] hover:border-[#26A5E4]/30 transition-all shadow-lg"><svg width="20" height="20" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true"><path d="M248,8C111.033,8,0,119.033,0,256S111.033,504,248,504,496,392.967,496,256,384.967,8,248,8ZM362.952,176.66c-3.732,39.215-19.881,134.378-28.1,178.3-3.476,18.584-10.322,24.816-16.948,25.425-14.4,1.326-25.338-9.517-39.287-18.661-21.827-14.308-34.158-23.215-55.346-37.177-24.485-16.135-8.612-25,5.342-39.5,3.652-3.793,67.107-61.51,68.335-66.746.153-.655.3-3.1-1.154-4.384s-3.59-.849-5.135-.5q-3.283.746-104.608,69.142-14.845,10.194-26.894,9.934c-8.855-.191-25.888-5.006-38.551-9.123-15.531-5.048-27.875-7.717-26.8-16.291q.84-6.7,18.45-13.7,108.446-47.248,144.628-62.3c68.872-28.647,83.183-33.623,92.511-33.789,2.052-.034,6.639.474,9.61,2.885a10.452,10.452,0,0,1,3.53,6.716A43.765,43.765,0,0,1,362.952,176.66Z"/></svg></a>
                         <a target="_blank" href="https://www.reddit.com/r/aniclips_site/" title="Reddit"
-                            class="w-10 h-10 bg-slate-900 border border-white/5 rounded-xl flex items-center justify-center text-slate-400 hover:text-[#FF4500] hover:border-[#FF4500]/30 transition-all shadow-lg"><i
-                                class="fa-brands fa-reddit-alien text-xl"></i></a>
+                            class="w-10 h-10 bg-slate-900 border border-white/5 rounded-xl flex items-center justify-center text-slate-400 hover:text-[#FF4500] hover:border-[#FF4500]/30 transition-all shadow-lg"><svg width="20" height="20" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true"><path d="M440.3 203.5c-15 0-28.2 6.2-37.9 15.9-35.7-24.7-83.8-40.6-137.1-42.3L293 52.3l88.2 19.8c0 21.6 17.6 39.2 39.2 39.2 22 0 39.7-18.1 39.7-39.7s-17.6-39.7-39.7-39.7c-15.4 0-28.7 9.3-35.3 22l-97.4-21.6c-4.9-1.3-9.7 2.2-11 7.1L246.3 177c-52.9 2.2-100.5 18.1-136.3 42.8-9.7-10.1-23.4-16.3-38.4-16.3-55.6 0-73.8 74.6-22.9 100.1-1.8 7.9-2.6 16.3-2.6 24.7 0 83.8 94.4 151.7 210.3 151.7 116.4 0 210.8-67.9 210.8-151.7 0-8.4-.9-17.2-3.1-25.1 49.9-25.6 31.5-99.7-23.8-99.7zM129.4 308.9c0-22 17.6-39.7 39.7-39.7 21.6 0 39.2 17.6 39.2 39.7 0 21.6-17.6 39.2-39.2 39.2-22 .1-39.7-17.6-39.7-39.2zm214.3 93.5c-36.4 36.4-139.1 36.4-175.5 0-4-3.5-4-9.7 0-13.7 3.5-3.5 9.7-3.5 13.2 0 27.8 28.5 120 29 149 0 3.5-3.5 9.7-3.5 13.2 0 4.1 4 4.1 10.2.1 13.7zm-.8-54.2c-21.6 0-39.2-17.6-39.2-39.2 0-22 17.6-39.7 39.2-39.7 22 0 39.7 17.6 39.7 39.7-.1 21.5-17.7 39.2-39.7 39.2z"/></svg></a>
                     </div>
                 </div>
 
