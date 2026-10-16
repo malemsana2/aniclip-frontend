@@ -1,0 +1,27 @@
+{
+  "name": "aniclip-frontend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "extracted.js",
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/input.css -o ./dist/tailwind.css --minify",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/malemsana2/aniclip-frontend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/malemsana2/aniclip-frontend/issues"
+  },
+  "homepage": "https://github.com/malemsana2/aniclip-frontend#readme",
+  "devDependencies": {
+    "autoprefixer": "^10.6.1",
+    "postcss": "^8.5.30",
+    "tailwindcss": "^3.4.19"
+  }
+}

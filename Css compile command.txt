@@ -1,0 +1,3 @@
+npm run build:css
+
+Run this after editing anime.html
