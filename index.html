@@ -30,8 +30,7 @@
     <link rel="icon" href="/favicon-512.png" sizes="512x512" type="image/png">
 
     <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&text=abcdefghijklmnopqrstuvwxyz_&display=swap"
-        media="print" onload="this.media='all'" />
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
 
@@ -53,17 +52,6 @@
             backdrop-filter: blur(16px);
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
-
-        /* Self-contained loading spinner: no icon-font or Tailwind dependency,
-           so it renders even before async fonts arrive */
-        .css-spinner {
-            width: 22px; height: 22px; border-radius: 9999px; flex-shrink: 0;
-            border: 3px solid rgba(255,255,255,.25); border-top-color: #fff;
-            animation: css-spin .8s linear infinite;
-        }
-        .css-spinner-sm { width: 16px; height: 16px; border-width: 2px; }
-        .css-spinner-blue { border-color: rgba(59,130,246,.25); border-top-color: #3b82f6; }
-        @keyframes css-spin { to { transform: rotate(360deg); } }
 
         .snap-scroll-x {
             -ms-overflow-style: none;
@@ -166,7 +154,8 @@
                     <span
                         class="material-symbols-rounded absolute left-3 top-1.5 text-slate-600 text-sm pointer-events-none">search</span>
                     <div id="search-spinner" class="absolute right-3 top-1.5 hidden">
-                        <div class="css-spinner css-spinner-sm css-spinner-blue"></div>
+                        <span
+                            class="material-symbols-rounded animate-spin text-blue-500 text-sm">progress_activity</span>
                     </div>
                 </div>
 
@@ -375,7 +364,7 @@
                 class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-2 gap-y-4">
             </div>
             <div id="archive-trigger" class="h-24 mt-10 flex justify-center items-center opacity-0 transition-opacity">
-                <div class="css-spinner css-spinner-blue"></div>
+                <span class="material-symbols-rounded animate-spin text-blue-500">progress_activity</span>
             </div>
         </div>
     </main>
