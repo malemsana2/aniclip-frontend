@@ -5,10 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anime Details</title>
-    <link rel="stylesheet" href="dist/tailwind.css">
     <link rel="icon" type="image/svg+xml" href="icon.svg">
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <!-- Static Tailwind AFTER the icon font: utilities must come last so text-*
+         sizes beat the font's own 24px base (same as Play CDN's runtime order) -->
+    <link rel="stylesheet" href="dist/tailwind.css">
 
     <!-- Adsterra in page push in (Social bar) - async so it never blocks first paint -->
     <script async src="https://pl30794986.profitableratecpmnetwork.com/e7/d6/57/e7d65715dc9c4d8e9f6b6776a81f6e99.js"></script>
@@ -42,7 +44,7 @@
 
         /* :where() keeps 24px as default but lets Tailwind text-* sizes win (same as Play CDN order) */
         :where(.material-symbols-rounded) {
-            font-size: 24px;
+            font-size: 18px;
         }
 
         #episodes-wrapper {
