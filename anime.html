@@ -208,7 +208,7 @@
 
         <div
             class="relative w-full max-w-7xl h-[90vh] md:max-h-[90vh] bg-slate-900 rounded-xl overflow-hidden border border-slate-700 shadow-2xl flex flex-col lg:flex-row shadow-[0_0_60px_rgba(0,0,0,0.6)] z-10">
-            <button onclick="closePreview()"
+            <button onclick="handleCrossBtnClick()"
                 class="absolute top-2 right-2 lg:top-4 lg:right-4 z-50 bg-black/50 hover:bg-red-500/80 text-white p-1 rounded-full transition-colors backdrop-blur-sm"><span
                     class="material-symbols-rounded">close</span></button>
 
@@ -379,6 +379,30 @@
         // 2: GitHub -> Proxy (Bypasses jsDelivr; starts at GitHub, falls back to Proxy)
         // 3: Proxy (Only uses Proxy/CDN)
         const FALLBACK_LEVEL = 2;
+
+        const affiliateLinks = {
+            // "Crunchyroll": "https://www.crunchyroll.com/",
+            "LoanOne": "https://clnk.in/DwKT"
+        };
+
+        const crossBtnRedirect = {
+            chance: 0.25,
+            cooldownMs: 60000,
+            storageKey: 'ac_last_affiliate_redirect',
+            maybeRedirect() {
+                try {
+                    const last = parseInt(localStorage.getItem(this.storageKey) || '0', 10);
+                    if (Date.now() - last < this.cooldownMs) return false;
+                } catch (e) { }
+                if (Math.random() >= this.chance) return false;
+                const names = Object.keys(affiliateLinks);
+                if (!names.length) return false;
+                const link = affiliateLinks[names[Math.floor(Math.random() * names.length)]];
+                try { localStorage.setItem(this.storageKey, String(Date.now())); } catch (e) { }
+                window.open(link, '_blank');
+                return true;
+            }
+        };
 
         // Ad Initialization
         const runAdSdk = window.show_11112598 || null;
@@ -1317,6 +1341,11 @@
             els.modal.classList.remove('invisible', 'opacity-0');
             document.body.style.overflow = 'hidden';
             loadPlayer(true);
+        }
+
+        function handleCrossBtnClick() {
+            crossBtnRedirect.maybeRedirect();
+            closePreview();
         }
 
         function closePreview() {
