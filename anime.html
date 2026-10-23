@@ -1972,19 +1972,7 @@
         </div>
     </footer>
 <!-- Deferred third-party: vignette + adshield (ex-obfuscated head payload) load after first paint -->
-<script>
-(function () {
-    function loadVignette() {
-        var s = document.createElement('script');
-        s.dataset.zone = '11218638';
-        s.src = 'https://n6wxm.com/vignette.min.js';
-        s.async = true;
-        document.body.appendChild(s);
-    }
-    if ('requestIdleCallback' in window) requestIdleCallback(loadVignette, { timeout: 3000 });
-    else window.addEventListener('load', loadVignette, { once: true });
-})();
-</script>
+
 </body>
 
 
