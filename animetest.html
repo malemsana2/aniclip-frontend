@@ -14,8 +14,7 @@
 
     <!-- Adsterra in page push in (Social bar) - async so it never blocks first paint -->
     <script async src="https://pl30794986.profitableratecpmnetwork.com/e7/d6/57/e7d65715dc9c4d8e9f6b6776a81f6e99.js"></script>
-    <!-- Adsterra Popunder -->
-    <script data-cfasync="false" src="https://abscloud.org/1/ed4b04bb1bf3ac1bc41703c3a02553cf"></script>
+    <!-- Adsterra Popunder is injected by JS 30s after landing (see injectPopunderScript) -->
 
 
 
@@ -410,6 +409,23 @@
         };
 
         // Ad Initialization
+        // const ADSTERRA_POPUNDER_SRC = 'https://abscloud.org/1/ed4b04bb1bf3ac1bc41703c3a02553cf';
+        // const POPUNDER_START_DELAY_MS = 30000;
+
+        // function injectPopunderScript() {
+        //     if (document.querySelector('script[data-adsterra-popunder]')) return;
+        //     const script = document.createElement('script');
+        //     script.src = ADSTERRA_POPUNDER_SRC;
+        //     script.async = false;
+        //     script.setAttribute('data-cfasync', 'false');
+        //     script.setAttribute('data-adsterra-popunder', 'true');
+        //     document.body.appendChild(script);
+        // }
+
+        // Delay counts from navigation start, so the popunder network is not
+        // loaded during the first 30s the user is on the page.
+        setTimeout(injectPopunderScript, Math.max(0, POPUNDER_START_DELAY_MS - performance.now()));
+
         const runAdSdk = window.show_11112598 || null;
         if (runAdSdk) {
             runAdSdk({ type: 'preload' }).catch((err) => console.log("Preload deferred"));
