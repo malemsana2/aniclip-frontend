@@ -409,22 +409,22 @@
         };
 
         // Ad Initialization
-        const ADSTERRA_POPUNDER_SRC = 'https://abscloud.org/1/ed4b04bb1bf3ac1bc41703c3a02553cf';
-        const POPUNDER_START_DELAY_MS = 30000;
+        // const ADSTERRA_POPUNDER_SRC = 'https://abscloud.org/1/ed4b04bb1bf3ac1bc41703c3a02553cf';
+        // const POPUNDER_START_DELAY_MS = 30000;
 
-        function injectPopunderScript() {
-            if (document.querySelector('script[data-adsterra-popunder]')) return;
-            const script = document.createElement('script');
-            script.src = ADSTERRA_POPUNDER_SRC;
-            script.async = false;
-            script.setAttribute('data-cfasync', 'false');
-            script.setAttribute('data-adsterra-popunder', 'true');
-            document.body.appendChild(script);
-        }
+        // function injectPopunderScript() {
+        //     if (document.querySelector('script[data-adsterra-popunder]')) return;
+        //     const script = document.createElement('script');
+        //     script.src = ADSTERRA_POPUNDER_SRC;
+        //     script.async = false;
+        //     script.setAttribute('data-cfasync', 'false');
+        //     script.setAttribute('data-adsterra-popunder', 'true');
+        //     document.body.appendChild(script);
+        // }
 
-        // Delay counts from navigation start, so the popunder network is not
-        // loaded during the first 30s the user is on the page.
-        setTimeout(injectPopunderScript, Math.max(0, POPUNDER_START_DELAY_MS - performance.now()));
+        // // Delay counts from navigation start, so the popunder network is not
+        // // loaded during the first 30s the user is on the page.
+        // setTimeout(injectPopunderScript, Math.max(0, POPUNDER_START_DELAY_MS - performance.now()));
 
         const runAdSdk = window.show_11112598 || null;
         if (runAdSdk) {
