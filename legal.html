@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AniClips legal information and copyright/DMCA-style takedown procedure for rights holders and authorized representatives.">
+    <meta name="theme-color" content="#020617">
+    <title>Legal &amp; DMCA | AniClips</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gray: { 900: '#0f172a', 950: '#020617' },
+                        brand: { 500: '#3b82f6', 600: '#2563eb' }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        html { scroll-behavior: smooth; scroll-padding-top: 6rem; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617;
+            color: #f1f5f9;
+            overflow-x: hidden;
+        }
+        .glass-nav {
+            background: rgba(2, 6, 23, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-enter { animation: fadeIn 0.5s ease-out forwards; opacity: 0; }
+        .legal-content h2 {
+            color: #fff;
+            font-size: clamp(1.25rem, 2.5vw, 1.65rem);
+            line-height: 1.3;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            margin: 2.8rem 0 1rem;
+            scroll-margin-top: 6rem;
+        }
+        .legal-content h3 {
+            color: #e2e8f0;
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin: 1.7rem 0 .65rem;
+        }
+        .legal-content p, .legal-content li {
+            color: #cbd5e1;
+            font-size: .98rem;
+            line-height: 1.85;
+        }
+        .legal-content p { margin: .85rem 0; }
+        .legal-content ul { list-style: disc; padding-left: 1.35rem; margin: .8rem 0 1.1rem; }
+        .legal-content li { padding-left: .25rem; margin: .45rem 0; }
+        .legal-content a { color: #60a5fa; text-decoration: underline; text-underline-offset: 3px; }
+        .legal-content strong { color: #f8fafc; font-weight: 700; }
+        .toc-link { display: block; border-radius: .65rem; padding: .6rem .75rem; color: #94a3b8; font-size: .85rem; transition: all .2s; }
+        .toc-link:hover { color: white; background: rgba(255,255,255,.05); }
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto; }
+            .animate-enter { animation: none; opacity: 1; }
+        }
+    </style>
+</head>
+
+<body class="antialiased min-h-screen flex flex-col bg-[#020617] relative selection:bg-blue-600 selection:text-white">
+    <div class="absolute top-0 right-1/4 w-[500px] h-[500px] bg-blue-900/10 rounded-full blur-[150px] pointer-events-none z-0"></div>
+
+    <header class="fixed top-0 w-full z-50 glass-nav transition-all duration-300">
+        <nav class="container mx-auto px-4 h-16 flex justify-between items-center">
+            <a href="/" class="flex items-center gap-3 group z-50" aria-label="AniClips home">
+                <div class="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center group-hover:bg-blue-500 transition-colors shadow-[0_0_15px_rgba(37,99,235,0.5)]">
+                    <span class="material-symbols-rounded text-white text-lg">movie</span>
+                </div>
+                <span class="font-black text-xl tracking-wide text-slate-100 group-hover:text-white transition-colors">Ani<span class="text-blue-500">Clips</span></span>
+            </a>
+            <div class="flex items-center gap-5 z-50">
+                <a href="/" class="text-[10px] sm:text-xs font-bold text-slate-400 hover:text-white uppercase tracking-wider transition-colors flex items-center gap-1">
+                    <span class="material-symbols-rounded text-sm">arrow_back</span>
+                    <span>Back to Library</span>
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <section class="w-full relative pt-28 pb-10 sm:pt-36 sm:pb-14 px-4 z-10 animate-enter">
+        <div class="max-w-4xl mx-auto">
+            <div class="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-[.18em]">
+                <span class="material-symbols-rounded text-sm">gavel</span>
+                Website Policies
+            </div>
+            <h1 class="text-3xl sm:text-5xl md:text-6xl font-black text-white leading-[1.08] tracking-tight mb-6">Legal &amp; DMCA</h1>
+            <p class="text-lg sm:text-xl text-slate-400 font-medium leading-relaxed max-w-3xl">
+                Legal information, copyright ownership, and a clear process for rights holders who believe material accessible through AniClips infringes their rights.
+            </p>
+            <div class="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/5 mt-8 pt-5 text-[11px] font-mono uppercase tracking-wider text-slate-500">
+                <span class="flex items-center gap-2"><span class="material-symbols-rounded text-sm text-blue-500">calendar_today</span> Effective date: October 25, 2026</span>
+                <a href="/terms.html" class="text-blue-400 hover:text-blue-300 transition-colors">Read Terms of Use <span aria-hidden="true">↗</span></a>
+            </div>
+        </div>
+    </section>
+
+    <main class="max-w-6xl mx-auto w-full px-4 pb-20 z-10 animate-enter" style="animation-delay: 120ms;">
+        <div class="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-8 lg:gap-14 items-start">
+            <aside class="lg:sticky lg:top-24 rounded-2xl bg-slate-900/50 border border-slate-800/80 p-4 sm:p-5">
+                <h2 class="text-[10px] font-black text-slate-500 uppercase tracking-[.18em] px-3 mb-3">On this page</h2>
+                <nav aria-label="Legal and DMCA contents" class="space-y-1">
+                    <a class="toc-link" href="#overview">1. Purpose of This Page</a>
+                    <a class="toc-link" href="#ownership">2. Copyright Ownership</a>
+                    <a class="toc-link" href="#intended">3. Intended Uses &amp; Restrictions</a>
+                    <a class="toc-link" href="#notice">4. Submit a Takedown Notice</a>
+                    <a class="toc-link" href="#requirements">5. Notice Requirements</a>
+                    <a class="toc-link" href="#review">6. Review &amp; Removal</a>
+                    <a class="toc-link" href="#counter">7. Disputes &amp; Counter-Notices</a>
+                    <a class="toc-link" href="#repeat">8. Repeat Infringement</a>
+                    <a class="toc-link" href="#abuse">9. False or Abusive Complaints</a>
+                    <a class="toc-link" href="#thirdparty">10. Third-Party Hosting</a>
+                    <a class="toc-link" href="#availability">11. Availability &amp; Rights Clearance</a>
+                    <a class="toc-link" href="#jurisdiction">12. Applicable Law</a>
+                    <a class="toc-link" href="#contact">13. Contact</a>
+                </nav>
+                <div class="mt-5 pt-4 border-t border-white/5 px-3">
+                    <p class="text-xs text-slate-500 leading-relaxed">Rights holder? Send a specific, verifiable notice so we can identify the material quickly.</p>
+                </div>
+            </aside>
+
+            <article class="legal-content min-w-0">
+                <div class="rounded-2xl border border-blue-500/20 bg-gradient-to-r from-blue-950/40 to-slate-900/40 p-5 sm:p-6 mb-8">
+                    <div class="flex gap-3 items-start">
+                        <span class="material-symbols-rounded text-blue-400 text-2xl">gavel</span>
+                        <div>
+                            <h2 class="!mt-0 !mb-2 !text-lg">Copyright concerns? Here is the process.</h2>
+                            <p class="!my-0">If you own copyright in material accessible through AniClips, or are authorized to act for the owner, email <a href="mailto:aniclips.site@gmail.com">aniclips.site@gmail.com</a> with the exact page or clip URL and the details below. Please be specific so we can locate and review the material.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <p>This page explains AniClips’ general legal position and how to submit a copyright complaint or DMCA-style takedown request. It is intended to make rights-holder requests easier to process; it is not legal advice and does not create rights or obligations beyond those imposed by applicable law.</p>
+
+                <h2 id="overview">1. Purpose of This Page</h2>
+                <p>This page explains AniClips’ approach to copyright, intellectual property, and requests to remove material that may infringe someone’s rights.</p>
+                <p>AniClips is an anime clip discovery and access platform intended to help users find short clips for creative editing and related community activities. We recognize that anime footage, music, artwork, characters, and other materials may be protected by copyright or other intellectual property rights.</p>
+                <p>We take legitimate copyright concerns seriously and provide a process for rights holders and their authorized representatives to request a review. This page is informational and does not constitute legal advice.</p>
+
+                <h2 id="ownership">2. Copyright Ownership</h2>
+                <p>AniClips does not claim ownership of third-party anime footage or other copyrighted works merely because they are listed, processed, previewed, or made accessible through the website.</p>
+                <p>Copyright and other intellectual property rights remain with their respective owners or licensors. Accessing a clip through AniClips does not transfer ownership or grant permission from the original rights holder for every possible use.</p>
+                <p>Users are responsible for ensuring that their use of material complies with applicable laws and any relevant permissions or licensing requirements.</p>
+
+                <h2 id="intended">3. Intended Uses and Restrictions</h2>
+                <p>AniClips is designed to support creative and community uses such as:</p>
+                <ul>
+                    <li>Anime edits and AMVs.</li>
+                    <li>Fan-made videos and other transformative creative projects.</li>
+                    <li>Commentary, criticism, reviews, and analysis.</li>
+                    <li>Educational and other uses permitted by applicable law.</li>
+                </ul>
+                <p>These examples are not a guarantee that every use is lawful. Copyright exceptions and limitations vary by jurisdiction, and the legality of a particular use depends on its circumstances.</p>
+                <p>The library must not be used as a deliberate means of copyright infringement, as a substitute for authorized commercial distribution, or to systematically mirror and redistribute the collection as a competing library.</p>
+                <p>Users must not misrepresent third-party works as their own or imply that AniClips grants rights that it does not possess. Please also read the <a href="/terms.html">AniClips Terms of Use</a> for the rules governing access to and use of the website.</p>
+
+                <h2 id="notice">4. How to Submit a Takedown Notice</h2>
+                <p>If you are a copyright owner, an authorized representative, or another party with a legitimate basis to report suspected infringement, you may contact us at:</p>
+                <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-5 my-5">
+                    <p class="!mt-0"><strong>Email:</strong> <a href="mailto:aniclips.site@gmail.com">aniclips.site@gmail.com</a></p>
+                    <p><strong>Suggested subject:</strong> Copyright Takedown Request — AniClips</p>
+                    <p class="!mb-0"><strong>Include:</strong> The exact AniClips URL(s), the work you own or represent, and your contact details.</p>
+                </div>
+                <p>Please identify the specific material you want us to review. Providing exact URLs and sufficient information helps us locate the content and assess your request. You do not need to use a lawyer to contact us, although you may wish to obtain legal advice.</p>
+                <p>If the same work appears at multiple URLs, list each URL separately where possible. Screenshots may help explain the issue, but please include the actual URL(s) as well.</p>
+
+                <h2 id="requirements">5. Information to Include in a Request</h2>
+                <p>To help us evaluate the request, include as many of the following details as apply:</p>
+                <ul>
+                    <li><strong>Your identity and contact details:</strong> Full name, organization (if applicable), and a working email address. A phone number or mailing address may be included if appropriate.</li>
+                    <li><strong>The copyrighted work:</strong> Identify the work you own or are authorized to represent. If you represent a company or rights holder, explain your authority to act for them.</li>
+                    <li><strong>The material in question:</strong> Provide each exact AniClips page or clip URL and enough detail to identify the specific material. General statements such as “remove all anime” are not sufficiently specific for a targeted review.</li>
+                    <li><strong>Why you believe it infringes:</strong> Briefly explain the rights involved and why the identified material is unauthorized. If relevant, identify the episode, title, release, or other source work.</li>
+                    <li><strong>Good-faith statement:</strong> State that you believe in good faith that the disputed use is not authorized by the copyright owner, its agent, or the law.</li>
+                    <li><strong>Accuracy and authority statement:</strong> Confirm that the information in your notice is accurate and that you are the rights holder or authorized to act on the rights holder’s behalf, where applicable.</li>
+                    <li><strong>Signature:</strong> Include your typed full name as an electronic signature. A formal notice under a particular law may require additional wording or information.</li>
+                </ul>
+                <p>Please do not send passwords, payment information, or unrelated sensitive personal information. We may ask for reasonable additional information if we cannot verify or locate the material.</p>
+
+                <h2 id="review">6. Review and Possible Removal</h2>
+                <p>After receiving a request, AniClips may assess whether it identifies the material clearly, whether the sender appears to have a legitimate basis to make the request, and whether additional information is needed.</p>
+                <p>Depending on the circumstances, we may:</p>
+                <ul>
+                    <li>Request clarification or additional information.</li>
+                    <li>Temporarily restrict access while a credible complaint is reviewed, where appropriate.</li>
+                    <li>Remove or disable access to identified material when warranted.</li>
+                    <li>Inform the person who submitted the request of the outcome when reasonably practicable.</li>
+                </ul>
+                <p>We aim to handle legitimate requests fairly and within a reasonable period. Processing times may vary depending on the completeness of the request, the complexity of the issue, and the availability of relevant information.</p>
+                <p>Submitting a complaint does not guarantee a particular outcome. We may be unable to act on vague, unverifiable, or incorrectly directed requests.</p>
+
+                <h2 id="counter">7. Disputes and Counter-Notices</h2>
+                <p>If material is removed or restricted following a complaint and you believe this happened in error, you may contact <a href="mailto:aniclips.site@gmail.com">aniclips.site@gmail.com</a> with the relevant URL, an explanation of your position, and any supporting information.</p>
+                <p>We may review the dispute and consider restoring access where appropriate.</p>
+                <p>This informal review process is not necessarily equivalent to a formal counter-notice procedure under the laws of any particular jurisdiction. If a statutory procedure applies, its specific requirements and deadlines must be followed.</p>
+
+                <h2 id="repeat">8. Repeat Infringement</h2>
+                <p>We may consider repeated, credible copyright complaints when deciding what action is appropriate for a particular item, account, submission, or use of the service. Any action will depend on the circumstances and applicable law.</p>
+                <p>This policy does not promise a particular enforcement outcome or imply that AniClips has adopted a formal repeat-infringer program under a specific statute.</p>
+
+                <h2 id="abuse">9. False or Abusive Complaints</h2>
+                <p>Copyright complaints should be accurate, made in good faith, and limited to material the sender has a legitimate basis to report.</p>
+                <p>Knowingly submitting false information, claiming rights you do not hold, or using the takedown process to harass others may have legal consequences under applicable law.</p>
+                <p>AniClips may decline to act on requests that appear fraudulent, abusive, or unsupported, and may seek clarification before taking action.</p>
+
+                <h2 id="thirdparty">10. Third-Party Hosting and External Services</h2>
+                <p>Some material accessible through AniClips may be stored, delivered, or processed using third-party hosting providers and infrastructure.</p>
+                <p>AniClips may not directly control every external server or service involved in delivering material. Where a complaint concerns content hosted by a third party, we may review the relevant AniClips listing and, where appropriate, direct the complainant to the responsible provider or submit a separate request through that provider’s process.</p>
+                <p>A third-party hosting arrangement does not, by itself, determine whether a particular use is lawful or eliminate any obligations that may apply to AniClips.</p>
+
+                <h2 id="availability">11. No Guarantee of Availability or Rights Clearance</h2>
+                <p>AniClips does not guarantee that every item in the library is available at all times, free of third-party claims, licensed for every intended use, or suitable for redistribution.</p>
+                <p>Material may be changed, restricted, or removed as the service evolves or when a legitimate legal or operational reason arises. Users who need rights-cleared material for commercial productions or other uses requiring permission should obtain the necessary authorization from the relevant rights holders.</p>
+
+                <h2 id="jurisdiction">12. Applicable Law</h2>
+                <p>AniClips operates from India. Copyright complaints and disputes may involve the laws of India or other jurisdictions, depending on the parties, material, and circumstances.</p>
+                <p>References to “DMCA” describe a commonly used copyright-notice framework associated with United States law. This page does not claim that AniClips has registered a DMCA agent, qualifies for any particular statutory safe harbor, or is exempt from liability. Those matters depend on facts and legal requirements that must be assessed separately.</p>
+                <p>Nothing on this page limits any rights or remedies available under applicable law.</p>
+
+                <h2 id="contact">13. Contact</h2>
+                <p>For copyright concerns, takedown requests, or questions about this policy, contact:</p>
+                <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-5 my-5">
+                    <p class="!mt-0"><strong>AniClips</strong></p>
+                    <p><strong>Email:</strong> <a href="mailto:aniclips.site@gmail.com">aniclips.site@gmail.com</a></p>
+                    <p class="!mb-0"><strong>Website:</strong> <a href="https://aniclips.site">https://aniclips.site</a></p>
+                </div>
+                <p>Please use a descriptive subject line and include the relevant URLs so your request can be reviewed efficiently.</p>
+
+                <div class="mt-12 pt-6 border-t border-white/10 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+                    <p class="!my-0 !text-sm text-slate-500">Last updated: October 25, 2026</p>
+                    <a href="/terms.html" class="inline-flex items-center gap-2 text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors">
+                        Read the Terms of Use <span class="material-symbols-rounded text-base">arrow_forward</span>
+                    </a>
+                </div>
+            </article>
+        </div>
+    </main>
+
+    <footer class="mt-auto border-t border-white/5 bg-slate-950/80 backdrop-blur-2xl pt-12 pb-8">
+        <div class="container mx-auto px-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+                <div class="space-y-3">
+                    <a href="/" class="flex items-center gap-3 group">
+                        <div class="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.25)]">
+                            <span class="material-symbols-rounded text-white text-lg">movie</span>
+                        </div>
+                        <span class="font-black text-xl tracking-tight text-slate-100">Ani<span class="text-blue-500">Clips</span></span>
+                    </a>
+                    <p class="text-slate-500 text-sm leading-relaxed max-w-md">A clip library built to help anime editors find the moments they need faster.</p>
+                </div>
+                <nav aria-label="Footer" class="flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-400">
+                    <a href="/" class="hover:text-white transition-colors">Library</a>
+                    <a href="terms.html" class="hover:text-white transition-colors">Terms of Use</a>
+                    <a href="privacy" class="hover:text-white transition-colors">Privacy Policy</a>
+                    <a href="legal" class="text-blue-400 hover:text-blue-300 transition-colors">Legal &amp; DMCA</a>
+                    <a href="feedback" class="hover:text-white transition-colors">Contact</a>
+                    <a href="https://t.me/+QTrHC5GUA9w5NjI9" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">Telegram</a>
+                    <a href="https://www.reddit.com/r/aniclips_site/" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">Reddit</a>
+                </nav>
+            </div>
+            <div class="mt-10 pt-6 border-t border-white/5 text-[10px] text-slate-600 font-bold uppercase tracking-widest flex flex-col sm:flex-row justify-between gap-3">
+                <p>© <span id="year"></span> AniClips Library. All rights reserved.</p>
+                <p>Made for editors. Use responsibly.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+</body>
+</html>
