@@ -63,5 +63,18 @@
   "author": "Previous Stomach",
   "authorTitle": "Creator & Lead Developer",
   "featured": true
+},
+{
+  "id": "how-to-use-aniclips",
+  "title": "How to use AniClips for editing?",
+  "slug": "how-to-use-aniclips.html",
+  "date": "November 03, 2026",
+  "readTime": "4 min read",
+  "category": "Editing Guides",
+  "excerpt": "Looking for anime clips for your next edit? AniClips makes it easy to find the scenes you need. Browse anime episodes, preview clips instantly by hovering, open the scene you like, and choose between Fast Clip and HQ Clip downloads. Here's a step-by-step guide to getting started with AniClips!",
+  "image": "https://aniclips.site/blogs/assets/how-to-use-aniclips-for-editing.webp",
+  "author": "Previous Stomach",
+  "authorTitle": "Creator & Lead Developer",
+  "featured": false
 }
 ]
