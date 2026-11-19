@@ -374,12 +374,8 @@
     <!-- ========================= JS LOGIC ========================= -->
     <script>
         const API_URL = 'https://aniclip-backend-nycl.onrender.com/api';
-        const JSON_ENDPOINTS = {
-            featured: 'https://cdn.jsdelivr.net/gh/adsjust460/bucket-bandage@main/featured.json',
-            recent: 'https://cdn.jsdelivr.net/gh/adsjust460/bucket-bandage@main/recent.json',
-            trending: 'https://cdn.jsdelivr.net/gh/adsjust460/bucket-bandage@main/Trending.json',
-            archive: 'https://cdn.jsdelivr.net/gh/adsjust460/bucket-bandage@main/archive.json'
-        };
+        const HOME_MANIFEST_URL = 'https://raw.githubusercontent.com/malemsana2/aniclips-search/main/home_manifest.json';
+        const SEARCH_MANIFEST_URL = 'https://raw.githubusercontent.com/malemsana2/aniclips-search/main/manifest.json';
 
         // STATE
         let debounceTimer;
@@ -392,6 +388,8 @@
         let endOfArchive = false;
         let archiveDatabase = null;
         let useArchiveApiFallback = false;
+        let homeData = null;
+        let isHomeDataLoading = false;
 
         window.onload = () => {
             loadHeroSection();
@@ -427,17 +425,62 @@
 
         // --- 1. DATA FETCHERS ---
 
+        async function ensureHomeData() {
+            if (homeData) return homeData;
+            if (isHomeDataLoading) {
+                while (isHomeDataLoading) {
+                    await new Promise(r => setTimeout(r, 50));
+                }
+                return homeData;
+            }
+            isHomeDataLoading = true;
+            try {
+                // 1. Fetch home manifest from raw GitHub (no-cache to always get active hash)
+                const manifestRes = await fetch(HOME_MANIFEST_URL, { cache: 'no-cache' });
+                if (!manifestRes.ok) throw new Error("Failed to fetch home manifest");
+                const manifest = await manifestRes.json();
+                const activeHash = manifest.current_hash;
+
+                // 2. Check disk cache (localStorage) for exact version
+                const cachedHash = localStorage.getItem('ac_home_hash');
+                const cachedData = localStorage.getItem('ac_home_data');
+                if (cachedHash === activeHash && cachedData) {
+                    homeData = JSON.parse(cachedData);
+                    console.log('⚡ Loaded home data from cache.');
+                    return homeData;
+                }
+
+                // 3. New version or first visit: use and cache
+                homeData = manifest;
+                if (activeHash) {
+                    localStorage.setItem('ac_home_hash', activeHash);
+                    localStorage.setItem('ac_home_data', JSON.stringify(manifest));
+                    console.log('✅ Updated and cached home data version:', activeHash);
+                }
+                return homeData;
+            } catch (e) {
+                console.warn("Failed to load home manifest from GitHub Raw, falling back to cache or API:", e);
+                const cachedData = localStorage.getItem('ac_home_data');
+                if (cachedData) {
+                    try {
+                        homeData = JSON.parse(cachedData);
+                        return homeData;
+                    } catch (err) {}
+                }
+                return null;
+            } finally {
+                isHomeDataLoading = false;
+            }
+        }
+
         async function loadHeroSection() {
             try {
-                let data;
-
-                try {
-                    const jsonRes = await fetch(JSON_ENDPOINTS.featured);
-                    if (!jsonRes.ok) throw new Error('Static featured JSON failed');
-                    data = await jsonRes.json();
-                } catch (jsonError) {
-                    console.warn('Static featured JSON unavailable, falling back to API:', jsonError);
-
+                let data = null;
+                const home = await ensureHomeData();
+                if (home && home.featured && home.featured.length > 0) {
+                    data = home.featured;
+                } else {
+                    console.warn('Home manifest featured unavailable, falling back to API');
                     const res = await fetch(`${API_URL}/animes/featured`);
                     data = await res.json();
                 }
@@ -454,35 +497,31 @@
 
         async function loadRecentRow() {
             try {
-                let data;
-                try {
-                    const jsonRes = await fetch(JSON_ENDPOINTS.recent);
-                    if (!jsonRes.ok) throw new Error('Static recent JSON failed');
-                    data = await jsonRes.json();
-                } catch (jsonError) {
-                    console.warn('Static recent JSON unavailable, falling back to API:', jsonError);
-
+                let data = null;
+                const home = await ensureHomeData();
+                if (home && home.recent && home.recent.length > 0) {
+                    data = home.recent;
+                } else {
+                    console.warn('Home manifest recent unavailable, falling back to API');
                     const res = await fetch(`${API_URL}/animes/recent`);
                     data = await res.json();
                 }
-                renderRow(data, 'recent-row');
+                if (data) renderRow(data, 'recent-row');
             } catch (e) { console.error("Recent row error:", e); }
         }
 
         async function loadTrendingGrid() {
             try {
-                let data;
-                try {
-                    const jsonRes = await fetch(JSON_ENDPOINTS.trending);
-                    if (!jsonRes.ok) throw new Error('Static trending JSON failed');
-                    data = await jsonRes.json();
-                } catch (jsonError) {
-                    console.warn('Static trending JSON unavailable, falling back to API:', jsonError);
-
+                let data = null;
+                const home = await ensureHomeData();
+                if (home && home.trending && home.trending.length > 0) {
+                    data = home.trending;
+                } else {
+                    console.warn('Home manifest trending unavailable, falling back to API');
                     const res = await fetch(`${API_URL}/animes/trending`);
                     data = await res.json();
                 }
-                renderGrid(data, 'trending-grid');
+                if (data) renderGrid(data, 'trending-grid');
             } catch (e) { console.error("Trending grid error:", e); }
         }
 
@@ -597,12 +636,23 @@
             try {
                 if (!useArchiveApiFallback && archiveDatabase === null) {
                     try {
-                        const jsonRes = await fetch(JSON_ENDPOINTS.archive);
-                        if (!jsonRes.ok) throw new Error('Static archive JSON failed');
-                        const rawData = await jsonRes.json();
-                        archiveDatabase = seededShuffle(rawData, sessionSeed);
-                    } catch (jsonError) {
-                        console.warn('Static archive JSON unavailable, falling back to API:', jsonError);
+                        await ensureSearchDatabase();
+                        if (searchDatabase && searchDatabase.length > 0) {
+                            const rawArchive = searchDatabase.map(a => ({
+                                id: a[0],
+                                name: a[1],
+                                slug: a[1],
+                                title: a[2],
+                                title_english: a[3],
+                                title_japanese: a[4],
+                                poster_url: a[5]
+                            }));
+                            archiveDatabase = seededShuffle(rawArchive, sessionSeed);
+                        } else {
+                            throw new Error('Search database empty for archive');
+                        }
+                    } catch (archiveError) {
+                        console.warn('Archive from search database unavailable, falling back to API:', archiveError);
                         useArchiveApiFallback = true;
                     }
                 }
@@ -689,8 +739,8 @@
             }
             isSearchDatabaseLoading = true;
             try {
-                // 1. Fetch manifest from raw GitHub
-                const manifestRes = await fetch(MANIFEST_URL);
+                // 1. Fetch manifest from raw GitHub (bypass browser HTTP cache)
+                const manifestRes = await fetch(MANIFEST_URL, { cache: 'no-cache' });
                 if (!manifestRes.ok) throw new Error("Failed to fetch manifest");
                 const manifest = await manifestRes.json();
                 const activeHash = manifest.current_hash;
