@@ -27,7 +27,13 @@
             height: 6px;
             border-radius: 1px;
             width: 100%;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .chunk:hover {
+            transform: scaleY(1.8);
+            filter: brightness(1.35);
         }
 
         .chunk.pending, .chunk.download_pending {
@@ -423,6 +429,36 @@
                         class="material-symbols-rounded">close</span></button>
             </div>
             <div id="anime-info-content" class="p-6 text-sm text-slate-300 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!-- EPISODE CONTEXT MENU -->
+    <div id="episode-context-menu"
+        class="hidden fixed z-[70] bg-slate-900/95 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl p-2 min-w-[240px] text-xs font-medium text-slate-300 animate-in fade-in zoom-in duration-100 select-none">
+        <div class="px-3 py-2 border-b border-white/5 mb-1">
+            <div id="ep-ctx-title" class="font-bold text-white text-[11px] truncate">Episode</div>
+            <div class="flex items-center gap-2 mt-1">
+                <span id="ep-ctx-badge" class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-blue-500/20 text-blue-400">PENDING</span>
+                <span id="ep-ctx-task" class="text-[9px] text-slate-500 font-mono">Task #0</span>
+            </div>
+            <div id="ep-ctx-worker" class="text-[9px] text-yellow-500/80 font-mono mt-1 hidden truncate">Worker: -</div>
+        </div>
+        <div class="space-y-0.5">
+            <button onclick="handleContextRelease()"
+                class="w-full text-left px-3 py-2 rounded-lg hover:bg-amber-500/20 hover:text-amber-300 text-amber-400 flex items-center gap-2.5 transition-colors">
+                <span class="material-symbols-rounded text-sm">lock_open</span>
+                <span>Release Task (Back to Pending)</span>
+            </button>
+            <button onclick="handleContextReset()"
+                class="w-full text-left px-3 py-2 rounded-lg hover:bg-red-500/20 hover:text-red-300 text-slate-400 hover:text-white flex items-center gap-2.5 transition-colors">
+                <span class="material-symbols-rounded text-sm">restart_alt</span>
+                <span>Hard Reset Task</span>
+            </button>
+            <button onclick="copyContextTaskId()"
+                class="w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white flex items-center gap-2.5 transition-colors">
+                <span class="material-symbols-rounded text-sm">content_copy</span>
+                <span>Copy Task ID</span>
+            </button>
         </div>
     </div>
 
@@ -911,7 +947,11 @@
                         const stage = (t.stage_status || t.status || 'DOWNLOAD_PENDING').toLowerCase();
                         const stageLabel = stage.replace('_', ' ').toUpperCase();
                         const owner = (stage === 'prefetch_downloading' || stage === 'prefetch_ready') && t.worker_id ? ` · RESERVED ${t.worker_id}` : '';
-                        return `<div class="chunk ${stage}" title="Ep ${t.ep_num}: ${stageLabel}${owner}"></div>`;
+                        const safeTitle = (p.title || 'Anime').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                        const safeWorker = (t.worker_id || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                        return `<div class="chunk ${stage}" title="Ep ${t.ep_num}: ${stageLabel}${owner}"
+                            oncontextmenu="openEpisodeMenu(event, ${t.id}, ${t.ep_num}, '${safeTitle}', '${stageLabel}', '${safeWorker}'); return false;"
+                            onclick="openEpisodeMenu(event, ${t.id}, ${t.ep_num}, '${safeTitle}', '${stageLabel}', '${safeWorker}')"></div>`;
                     }).join('')}</div>
                 </div>`;
             }).join('');
@@ -1148,6 +1188,107 @@
             refresh();
             setInterval(refresh, 5000);
         };
+
+        let activeContextMenuTask = null;
+
+        function openEpisodeMenu(e, taskId, epNum, animeTitle, stageLabel, workerId) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            activeContextMenuTask = { taskId, epNum, animeTitle, stageLabel, workerId };
+
+            const menu = document.getElementById('episode-context-menu');
+            document.getElementById('ep-ctx-title').innerText = `${animeTitle} — Ep ${epNum}`;
+            document.getElementById('ep-ctx-task').innerText = `Task #${taskId}`;
+
+            const badge = document.getElementById('ep-ctx-badge');
+            badge.innerText = stageLabel;
+
+            const workerEl = document.getElementById('ep-ctx-worker');
+            if (workerId) {
+                workerEl.innerText = `Worker: ${workerId}`;
+                workerEl.classList.remove('hidden');
+            } else {
+                workerEl.classList.add('hidden');
+            }
+
+            menu.classList.remove('hidden');
+            const menuWidth = 250;
+            const menuHeight = 160;
+            let x = e.clientX;
+            let y = e.clientY;
+
+            if (x + menuWidth > window.innerWidth) {
+                x = window.innerWidth - menuWidth - 10;
+            }
+            if (y + menuHeight > window.innerHeight) {
+                y = window.innerHeight - menuHeight - 10;
+            }
+
+            menu.style.left = `${Math.max(10, x)}px`;
+            menu.style.top = `${Math.max(10, y)}px`;
+        }
+
+        function closeEpisodeMenu() {
+            const menu = document.getElementById('episode-context-menu');
+            if (menu) menu.classList.add('hidden');
+            activeContextMenuTask = null;
+        }
+
+        window.addEventListener('click', (e) => {
+            const menu = document.getElementById('episode-context-menu');
+            if (menu && !menu.contains(e.target)) {
+                closeEpisodeMenu();
+            }
+        });
+        window.addEventListener('contextmenu', (e) => {
+            if (!e.target.closest('.chunk')) {
+                closeEpisodeMenu();
+            }
+        });
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeEpisodeMenu();
+        });
+
+        async function handleContextRelease() {
+            if (!activeContextMenuTask) return;
+            const { taskId, epNum } = activeContextMenuTask;
+            closeEpisodeMenu();
+            if (!confirm(`Release task #${taskId} (Episode ${epNum})?\n\nThis will unbind the worker and storage reservation, returning the task to PENDING.`)) return;
+            try {
+                await safeFetch(`/production/worker/tasks/${taskId}/release-reservation`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                refresh();
+            } catch (err) {
+                alert(`Failed to release task #${taskId}: ${err.message}`);
+            }
+        }
+
+        async function handleContextReset() {
+            if (!activeContextMenuTask) return;
+            const { taskId, epNum } = activeContextMenuTask;
+            closeEpisodeMenu();
+            if (!confirm(`Hard reset task #${taskId} (Episode ${epNum}) back to DOWNLOAD_PENDING?`)) return;
+            try {
+                await safeFetch(`/production/tasks/${taskId}/reset`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ single_task: true })
+                });
+                refresh();
+            } catch (err) {
+                alert(`Failed to reset task #${taskId}: ${err.message}`);
+            }
+        }
+
+        function copyContextTaskId() {
+            if (!activeContextMenuTask) return;
+            navigator.clipboard.writeText(String(activeContextMenuTask.taskId));
+            closeEpisodeMenu();
+        }
     </script>
 </body>
 
