@@ -11,6 +11,9 @@
     <!-- Static Tailwind AFTER the icon font: utilities must come last so text-*
          sizes beat the font's own 24px base (same as Play CDN's runtime order) -->
     <link rel="stylesheet" href="dist/tailwind.css">
+    <!-- Dual Audio demuxing & remuxing libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/mp4box@0.5.2/dist/mp4box.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mp4-muxer/build/mp4-muxer.js"></script>
 
     <!-- Adsterra in page push in (Social bar) - async so it never blocks first paint -->
     <script async src="https://pl30794986.profitableratecpmnetwork.com/e7/d6/57/e7d65715dc9c4d8e9f6b6776a81f6e99.js"></script>
@@ -82,6 +85,54 @@
             outline: 2px solid #3b82f6;
             opacity: 1;
             filter: brightness(1.2);
+        }
+
+        /* Custom Player Range & Thumb Styling */
+        #player-volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+        }
+        #player-volume-slider::-moz-range-thumb {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+        }
+        .custom-player-bar {
+            transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Custom Native Preview Loading Spinner */
+        .player-spinner-ring {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            border: 3px solid rgba(59, 130, 246, 0.15);
+            border-top-color: #3b82f6;
+            border-right-color: #60a5fa;
+            animation: playerSpin 0.85s cubic-bezier(0.4, 0.1, 0.2, 1) infinite;
+        }
+        @keyframes playerSpin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Download File Size Corner Label */
+        .dl-size-corner {
+            position: absolute;
+            bottom: 4px;
+            right: 8px;
+            font-size: 10px;
+            line-height: 1;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            pointer-events: none;
+            opacity: 0.85;
         }
 
         .clip-card {
@@ -214,16 +265,88 @@
                 class="absolute top-2 right-2 lg:top-4 lg:right-4 z-50 bg-black/50 hover:bg-red-500/80 text-white p-1 rounded-full transition-colors backdrop-blur-sm"><span
                     class="material-symbols-rounded">close</span></button>
 
-            <div class="w-full lg:w-[70%] bg-black flex flex-col relative group/video">
-                <div class="relative w-full flex-grow flex items-center justify-center bg-black">
+            <div id="video-container" class="w-full lg:w-[70%] bg-black flex flex-col relative group/video select-none">
+                <div class="relative w-full flex-grow flex items-center justify-center bg-black overflow-hidden cursor-pointer" id="video-stage">
                     <video id="video-player" class="w-full max-h-[65vh] aspect-16-9 object-contain outline-none"
-                        controls autoplay playsinline></video>
+                        autoplay playsinline></video>
+
+                    <!-- Center Play/Pause Ripple Indicator -->
+                    <div id="player-center-icon" class="absolute w-16 h-16 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white pointer-events-none opacity-0 scale-75 transition-all duration-300 z-20">
+                        <span class="material-symbols-rounded text-4xl" id="player-center-icon-symbol">play_arrow</span>
+                    </div>
+
+                    <!-- Video Loading / Decrypting Spinner Overlay -->
+                    <div id="player-loading-spinner" class="absolute inset-0 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm z-20 pointer-events-none transition-opacity duration-300 opacity-0 hidden">
+                        <div class="relative flex items-center justify-center">
+                            <!-- Outer pulsing neon glow -->
+                            <div class="absolute w-14 h-14 rounded-full bg-blue-500/20 blur-md animate-pulse"></div>
+                            <!-- Spinning ring with accent gradient -->
+                            <div class="player-spinner-ring"></div>
+                            <!-- Center Icon Badge -->
+                            <div class="absolute w-8 h-8 rounded-full bg-slate-900 border border-blue-500/40 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                                <span class="material-symbols-rounded text-blue-400 text-lg animate-pulse">play_arrow</span>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex items-center gap-2">
+                            <span id="player-loading-text" class="text-xs font-bold tracking-wider uppercase text-blue-400 drop-shadow">Decrypting Stream...</span>
+                            <span id="player-loading-pct" class="text-xs font-mono font-semibold text-slate-300 hidden"></span>
+                        </div>
+                    </div>
+
+                    <!-- Navigation Chevrons -->
                     <button id="prev-clip-btn"
-                        class="absolute left-0 top-0 bottom-14 w-24 flex items-center justify-start pl-4 bg-gradient-to-r from-black/60 to-transparent opacity-0 group-hover/video:opacity-100 transition-opacity disabled:hidden focus:outline-none"><span
+                        class="absolute left-0 top-0 bottom-14 w-20 flex items-center justify-start pl-4 bg-gradient-to-r from-black/60 to-transparent opacity-0 group-hover/video:opacity-100 transition-opacity disabled:hidden focus:outline-none z-20"><span
                             class="material-symbols-rounded text-5xl text-white/90 drop-shadow-lg transform active:scale-95 transition-transform">chevron_left</span></button>
                     <button id="next-clip-btn"
-                        class="absolute right-0 top-0 bottom-14 w-24 flex items-center justify-end pr-4 bg-gradient-to-l from-black/60 to-transparent opacity-0 group-hover/video:opacity-100 transition-opacity disabled:hidden focus:outline-none"><span
+                        class="absolute right-0 top-0 bottom-14 w-20 flex items-center justify-end pr-4 bg-gradient-to-l from-black/60 to-transparent opacity-0 group-hover/video:opacity-100 transition-opacity disabled:hidden focus:outline-none z-20"><span
                             class="material-symbols-rounded text-5xl text-white/90 drop-shadow-lg transform active:scale-95 transition-transform">chevron_right</span></button>
+
+                    <!-- Native-Feel Custom Player Controls Overlay -->
+                    <div id="custom-player-controls" class="custom-player-bar absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/95 via-black/70 to-transparent pt-6 pb-2 px-3 sm:px-4 flex flex-col gap-1.5 opacity-100 z-30 transition-opacity duration-300">
+                        <!-- Progress / Scrubber Bar -->
+                        <div id="player-scrub-container" class="relative w-full h-3 group/scrub flex items-center cursor-pointer">
+                            <div class="w-full h-1 bg-white/20 rounded-full overflow-hidden transition-all group-hover/scrub:h-1.5 relative pointer-events-none">
+                                <div id="player-buffer-bar" class="absolute inset-y-0 left-0 bg-white/30 w-0 transition-all duration-150"></div>
+                                <div id="player-progress-bar" class="absolute inset-y-0 left-0 bg-blue-500 w-0"></div>
+                            </div>
+                            <div id="player-progress-thumb" class="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-blue-500 rounded-full shadow border border-white/40 opacity-0 group-hover/scrub:opacity-100 transition-opacity pointer-events-none -translate-x-1/2"></div>
+                            <div id="player-scrub-tooltip" class="absolute -top-7 px-1.5 py-0.5 bg-slate-900/90 text-[10px] text-white rounded font-mono pointer-events-none -translate-x-1/2 hidden border border-white/20 shadow">0:00</div>
+                        </div>
+
+                        <!-- Buttons & Controls Row -->
+                        <div class="flex items-center justify-between text-white text-xs gap-2">
+                            <!-- Left Controls: Play/Pause, Volume, Time -->
+                            <div class="flex items-center gap-2 sm:gap-3">
+                                <button id="player-play-btn" class="hover:text-blue-400 transition-colors p-1 flex items-center focus:outline-none" title="Play/Pause (Space)">
+                                    <span class="material-symbols-rounded text-2xl" id="player-play-icon">play_arrow</span>
+                                </button>
+
+                                <div class="flex items-center gap-1 group/vol">
+                                    <button id="player-mute-btn" class="hover:text-blue-400 transition-colors p-1 flex items-center focus:outline-none" title="Mute/Unmute (M)">
+                                        <span class="material-symbols-rounded text-xl" id="player-mute-icon">volume_up</span>
+                                    </button>
+                                    <input id="player-volume-slider" type="range" min="0" max="1" step="0.05" value="1" class="w-14 sm:w-18 h-1 bg-white/30 rounded-lg appearance-none cursor-pointer accent-blue-500 hidden sm:block">
+                                </div>
+
+                                <div class="font-mono text-[11px] text-slate-300 ml-1">
+                                    <span id="player-cur-time">0:00</span> <span class="text-slate-500">/</span> <span id="player-total-time">0:00</span>
+                                </div>
+                            </div>
+
+                            <!-- Right Controls: Audio Track Switcher (Sub/Dub), Fullscreen -->
+                            <div class="flex items-center gap-2 sm:gap-3">
+                                <!-- Dual Audio Pill Toggle (hidden for single-audio clips) -->
+                                <div id="player-audio-toggle" class="hidden items-center bg-slate-900/90 border border-slate-700/80 rounded-full p-0.5 shadow-inner">
+                                    <button id="audio-sub-btn" type="button" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase transition-all bg-blue-600 text-white shadow" title="Switch to Sub (Japanese)">Sub</button>
+                                    <button id="audio-dub-btn" type="button" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase transition-all text-slate-400 hover:text-white" title="Switch to Dub (English)">Dub</button>
+                                </div>
+
+                                <button id="player-fullscreen-btn" class="hover:text-blue-400 transition-colors p-1 flex items-center focus:outline-none" title="Fullscreen (F)">
+                                    <span class="material-symbols-rounded text-xl" id="player-fullscreen-icon">fullscreen</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="h-24 bg-slate-950 border-t border-white/10 flex flex-col justify-center relative">
                     <div id="thumbnail-slider"
@@ -260,6 +383,48 @@
 
                 <div class="flex-1 min-h-0 overflow-hidden mb-6 flex justify-center items-start">
                     <div id="kadam-banner-slot" class="w-[300px] h-[250px] overflow-hidden rounded-lg flex-shrink-0">
+                    </div>
+                </div>
+
+                <!-- Download Options Header: Info Icon (Left) & Audio Track Selector (Right) -->
+                <div id="download-header-bar" class="flex items-center justify-between gap-2 mb-2 px-0.5 min-h-[30px]">
+                    <div class="relative flex items-center">
+                        <button id="dl-info-btn" type="button" class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none" title="Download options info">
+                            <span class="material-symbols-rounded text-lg">info</span>
+                        </button>
+                        <!-- Info Popover / Tooltip -->
+                        <div id="dl-info-popover" class="hidden absolute left-0 bottom-full mb-2 w-72 p-3 bg-slate-900/95 border border-slate-700/80 rounded-xl shadow-2xl backdrop-blur-md z-50 text-left text-xs text-slate-300">
+                            <div class="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-800">
+                                <span class="font-bold text-white flex items-center gap-1.5 text-xs">
+                                    <span class="material-symbols-rounded text-blue-400 text-sm">info</span> Download Options
+                                </span>
+                                <button id="dl-info-close" type="button" class="text-slate-400 hover:text-white p-0.5 rounded">
+                                    <span class="material-symbols-rounded text-sm">close</span>
+                                </button>
+                            </div>
+                            <div class="space-y-2 text-[11px] leading-snug">
+                                <div>
+                                    <p class="font-bold text-slate-200">⚡ Fast Clip</p>
+                                    <p class="text-slate-400">Lightweight preview stream. Fast download, optimal for quick sharing or previewing.</p>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-blue-400">✨ High Quality Clip</p>
+                                    <p class="text-slate-400">Source quality video with higher bitrate and crystal clear clarity.</p>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-slate-200">🎧 SUB / DUB Toggle</p>
+                                    <p class="text-slate-400">Select whether to save the clip with Japanese original audio (SUB) or English dub (DUB). Processed cleanly in your browser.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Sub / Dub Audio Selector (Only visible for dual audio clips) -->
+                    <div id="download-audio-selector" class="hidden items-center ml-auto">
+                        <div class="inline-flex p-0.5 bg-slate-900 border border-slate-700/80 rounded-lg shadow-inner">
+                            <button type="button" data-audio-track="sub" class="dl-audio-pill active px-3 py-0.5 rounded-md text-xs font-bold uppercase transition-all bg-blue-600 text-white shadow" title="Download clip with Sub (Japanese)">SUB</button>
+                            <button type="button" data-audio-track="dub" class="dl-audio-pill px-3 py-0.5 rounded-md text-xs font-bold uppercase transition-all text-slate-400 hover:text-white hover:bg-slate-800" title="Download clip with Dub (English)">DUB</button>
+                        </div>
                     </div>
                 </div>
 
@@ -462,6 +627,19 @@
             monetagPushInAd: "11154837",
             popunderCooldownMin: 0.5,
             popunderStorageKey: "ac_last_popunder",
+
+            // Dual Audio State
+            selectedAudioTrack: (function () {
+                try { return localStorage.getItem('aniclip_audio_pref') || 'sub'; } catch (e) { return 'sub'; }
+            })(),
+            selectedDownloadAudio: (function () {
+                try {
+                    const saved = localStorage.getItem('aniclip_dl_audio_pref');
+                    return (saved === 'dub') ? 'dub' : 'sub';
+                } catch (e) { return 'sub'; }
+            })(),
+            currentAudioMode: 'single', // 'single' or 'dual'
+            isScrubbing: false,
         };
 
         async function safeFetch(url, options = {}) {
@@ -542,7 +720,37 @@
             dlContainer: document.getElementById('download-container'),
             autoPlayInput: document.getElementById('autoplay-toggle'),
             prevBtn: document.getElementById('prev-clip-btn'),
-            nextBtn: document.getElementById('next-clip-btn')
+            nextBtn: document.getElementById('next-clip-btn'),
+
+            // Custom Player Elements
+            stage: document.getElementById('video-stage'),
+            videoContainer: document.getElementById('video-container'),
+            customControls: document.getElementById('custom-player-controls'),
+            scrubContainer: document.getElementById('player-scrub-container'),
+            progressBar: document.getElementById('player-progress-bar'),
+            bufferBar: document.getElementById('player-buffer-bar'),
+            progressThumb: document.getElementById('player-progress-thumb'),
+            scrubTooltip: document.getElementById('player-scrub-tooltip'),
+            playBtn: document.getElementById('player-play-btn'),
+            playIcon: document.getElementById('player-play-icon'),
+            muteBtn: document.getElementById('player-mute-btn'),
+            muteIcon: document.getElementById('player-mute-icon'),
+            volSlider: document.getElementById('player-volume-slider'),
+            curTimeText: document.getElementById('player-cur-time'),
+            totalTimeText: document.getElementById('player-total-time'),
+            playerAudioToggle: document.getElementById('player-audio-toggle'),
+            audioSubBtn: document.getElementById('audio-sub-btn'),
+            audioDubBtn: document.getElementById('audio-dub-btn'),
+            fullscreenBtn: document.getElementById('player-fullscreen-btn'),
+            centerIcon: document.getElementById('player-center-icon'),
+            centerIconSymbol: document.getElementById('player-center-icon-symbol'),
+            playerSpinner: document.getElementById('player-loading-spinner'),
+            playerLoadingText: document.getElementById('player-loading-text'),
+            playerLoadingPct: document.getElementById('player-loading-pct'),
+
+            // Dual Audio Download Selector
+            dlAudioSelector: document.getElementById('download-audio-selector'),
+            dlTrackTag: document.getElementById('dl-track-tag')
         };
 
         window.onload = async () => {
@@ -558,6 +766,7 @@
                 initMemoryManager();
                 initThumbRetryObserver();
                 initFeedbackPromptLogic();
+                initCustomPlayerEvents();
                 if (localStorage.getItem('ac_autoplay') === 'true') {
                     els.autoPlayInput.checked = true;
                     state.autoplay = true;
@@ -831,6 +1040,7 @@
         const cryptoCache = {};
         const pendingKeyRequests = {};
         const blobCache = {};
+        const decryptedBufferCache = {};
 
         // --- TIERED BLOB LRU (caps decrypted blobs held in RAM) ---
         // hover: 100 entries | preview: 10 entries | hq: 2 entries | thumbnail: 50MB (practically uncapped)
@@ -850,10 +1060,12 @@
         // A blob is in use if it is the player source, referenced by any live
         // media element, or a pinned user download. Eviction always skips these.
         function isBlobPinned(url) {
-            if (pinnedBlobs.has(url)) return true;
+            const blobUrl = blobCache[url];
+            if (pinnedBlobs.has(url) || (blobUrl && pinnedBlobs.has(blobUrl))) return true;
             try {
-                if (typeof els !== 'undefined' && els.player && els.player.src === url) return true;
+                if (typeof els !== 'undefined' && els.player && (els.player.src === url || (blobUrl && els.player.src === blobUrl))) return true;
                 if (document.querySelector(`video[src="${url}"], img[src="${url}"]`)) return true;
+                if (blobUrl && document.querySelector(`video[src="${blobUrl}"], img[src="${blobUrl}"]`)) return true;
             } catch (e) { /* selector/els unavailable: treat as unpinned */ }
             return false;
         }
@@ -864,6 +1076,10 @@
             if (meta && meta.tier === 'thumbnail') thumbBlobBytes = Math.max(0, thumbBlobBytes - meta.size);
             blobMeta.delete(url);
             delete blobCache[url];
+            delete decryptedBufferCache[url];
+            if (typeof AniAudioEngine !== 'undefined' && AniAudioEngine.clipAudioCache) {
+                AniAudioEngine.clipAudioCache.delete(url);
+            }
             for (const arr of state.blobRegistry.values()) {
                 const i = arr.findIndex(e => e.originalUrl === url);
                 if (i >= 0) arr.splice(i, 1);
@@ -900,6 +1116,7 @@
             if (prev && prev.tier === 'thumbnail') thumbBlobBytes -= prev.size;
             blobMeta.set(url, { tier, size, last: ++blobLruClock });
             if (tier === 'thumbnail') thumbBlobBytes += size;
+            if (typeof recordFileSize === 'function') recordFileSize(url, size);
             enforceBlobTierCap(tier);
         }
 
@@ -958,44 +1175,197 @@
             return ivCache[clipId];
         }
 
+        async function remuxAndExtractTrack(arrayBuffer, targetAudioTrackType) {
+            if (!window.MP4Box || !window.Mp4Muxer) {
+                console.warn("Remuxing libraries unavailable, returning original buffer.");
+                return new Blob([arrayBuffer], { type: 'video/mp4' });
+            }
+
+            return new Promise((resolve, reject) => {
+                const mp4box = MP4Box.createFile();
+                let videoTrack = null;
+                let selectedAudioTrack = null;
+                let muxer = null;
+
+                mp4box.onError = (e) => reject(new Error("MP4Box parse error: " + e));
+                mp4box.onReady = (info) => {
+                    videoTrack = info.videoTracks && info.videoTracks[0];
+                    const audioTracks = info.audioTracks || [];
+                    if (!videoTrack) {
+                        reject(new Error("No video track found in MP4"));
+                        return;
+                    }
+
+                    let targetAudioIndex = 0;
+                    if (targetAudioTrackType === 'dub') {
+                        const engIdx = audioTracks.findIndex(t => (t.language && t.language.startsWith('en')) || (t.name && t.name.toLowerCase().includes('dub')));
+                        targetAudioIndex = engIdx !== -1 ? engIdx : (audioTracks.length > 1 ? 1 : 0);
+                    } else {
+                        const jpnIdx = audioTracks.findIndex(t => (t.language && t.language.startsWith('jp')) || (t.name && t.name.toLowerCase().includes('sub')));
+                        targetAudioIndex = jpnIdx !== -1 ? jpnIdx : 0;
+                    }
+                    selectedAudioTrack = audioTracks[targetAudioIndex];
+
+                    let videoCodec = 'avc';
+                    if (videoTrack.codec.startsWith('hvc1') || videoTrack.codec.startsWith('hev1')) videoCodec = 'hevc';
+                    else if (videoTrack.codec.startsWith('vp09')) videoCodec = 'vp9';
+                    else if (videoTrack.codec.startsWith('av01')) videoCodec = 'av1';
+
+                    try {
+                        muxer = new Mp4Muxer.Muxer({
+                            target: new Mp4Muxer.ArrayBufferTarget(),
+                            video: {
+                                codec: videoCodec,
+                                width: videoTrack.video.width,
+                                height: videoTrack.video.height
+                            },
+                            audio: selectedAudioTrack ? {
+                                codec: selectedAudioTrack.codec.startsWith('opus') ? 'opus' : 'aac',
+                                sampleRate: selectedAudioTrack.audio.sample_rate,
+                                numberOfChannels: selectedAudioTrack.audio.channel_count
+                            } : undefined,
+                            fastStart: 'in-memory',
+                            firstTimestampBehavior: 'offset'
+                        });
+                    } catch (err) {
+                        reject(err);
+                        return;
+                    }
+
+                    mp4box.setExtractionOptions(videoTrack.id, 'video', { nbSamples: 2000 });
+                    if (selectedAudioTrack) {
+                        mp4box.setExtractionOptions(selectedAudioTrack.id, 'audio', { nbSamples: 2000 });
+                    }
+                    mp4box.start();
+                };
+
+                let videoExtradataSent = false;
+                function getVideoExtradata() {
+                    try {
+                        const trak = mp4box.moov?.traks?.find(t => t.tkhd.track_id === videoTrack.id);
+                        const entry = trak?.mdia?.minf?.stbl?.stsd?.entries[0];
+                        const box = entry?.avcC || entry?.hvcC;
+                        if (box) {
+                            const StreamClass = window.DataStream || (window.MP4Box && window.MP4Box.DataStream);
+                            if (StreamClass) {
+                                const stream = new StreamClass(undefined, 0, StreamClass.BIG_ENDIAN);
+                                box.write(stream);
+                                return new Uint8Array(stream.buffer.slice(8));
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Could not extract video extradata:", e);
+                    }
+                    return null;
+                }
+
+                let videoFirstDts = null;
+                let audioFirstDts = null;
+
+                mp4box.onSamples = (trackId, user, samples) => {
+                    for (const s of samples) {
+                        if (user === 'video') {
+                            if (videoFirstDts === null) videoFirstDts = s.dts;
+                            const relDts = s.dts - videoFirstDts;
+                            const relCts = s.cts !== undefined ? (s.cts - videoFirstDts) : relDts;
+                            const pts = Math.max(0, Math.round((relCts / s.timescale) * 1_000_000));
+                            const dur = Math.max(1, Math.round((s.duration / s.timescale) * 1_000_000));
+                            const ctsOffset = Math.round(((s.cts !== undefined ? (s.cts - s.dts) : 0) / s.timescale) * 1_000_000);
+
+                            let meta = undefined;
+                            if (!videoExtradataSent) {
+                                const extradata = getVideoExtradata();
+                                if (extradata) {
+                                    meta = { decoderConfig: { codec: videoTrack.codec, description: extradata } };
+                                    videoExtradataSent = true;
+                                }
+                            }
+                            muxer.addVideoChunkRaw(s.data, s.is_sync ? 'key' : 'delta', pts, dur, meta, ctsOffset);
+                        } else if (user === 'audio') {
+                            if (audioFirstDts === null) audioFirstDts = s.dts;
+                            const relDts = s.dts - audioFirstDts;
+                            const pts = Math.max(0, Math.round((relDts / s.timescale) * 1_000_000));
+                            const dur = Math.max(1, Math.round((s.duration / s.timescale) * 1_000_000));
+                            muxer.addAudioChunkRaw(s.data, 'key', pts, dur);
+                        }
+                    }
+                };
+
+                const bufferCopy = arrayBuffer.slice(0);
+                bufferCopy.fileStart = 0;
+                mp4box.appendBuffer(bufferCopy);
+                mp4box.flush();
+
+                try {
+                    muxer.finalize();
+                    const outBuffer = muxer.target.buffer;
+                    const blob = new Blob([outBuffer], { type: 'video/mp4' });
+                    resolve(blob);
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        }
+
         const DownloadTasks = {
             tasks: {},
-            getTask(url, clipId, filename) {
-                const key = url;
+            getTask(key, clipId, filename) {
                 if (!this.tasks[key]) {
                     this.tasks[key] = { progress: 0, status: 'IDLE', filename: filename, blobUrl: null, subscribers: [] };
                 }
                 return this.tasks[key];
             },
-            subscribe(url, callback) {
-                const task = this.getTask(url, '');
+            subscribe(key, callback) {
+                const task = this.getTask(key, '');
                 task.subscribers.push(callback);
                 callback(task);
             },
-            notify(url) {
-                const task = this.tasks[url];
+            notify(key) {
+                const task = this.tasks[key];
                 if (task) task.subscribers.forEach(cb => cb(task));
             },
-            async startDownload(url, clipId, filename) {
-                const task = this.getTask(url, clipId, filename);
+            async startDownload(url, clipId, filename, audioChoice = 'sub') {
+                const taskKey = `${url}_${audioChoice}`;
+                const task = this.getTask(taskKey, clipId, filename);
                 if (task.status !== 'IDLE') return;
                 task.status = 'DOWNLOADING';
-                this.notify(url);
+                this.notify(taskKey);
                 try {
                     const dlTier = /_HQ$/.test(filename) ? 'hq' : 'preview';
                     const blobUrl = await DecryptionManager.getBlobUrl(url, clipId, 0, null, (p) => {
-                        task.progress = p;
-                        this.notify(url);
+                        task.progress = (state.currentAudioMode === 'dual') ? Math.round(p * 0.75) : p;
+                        this.notify(taskKey);
                     }, null, dlTier);
-                    task.blobUrl = blobUrl;
-                    pinnedBlobs.add(blobUrl); // user download: never evict mid-save
+
+                    // If single audio track, no remux needed
+                    if (state.currentAudioMode === 'single') {
+                        task.blobUrl = blobUrl;
+                        pinnedBlobs.add(blobUrl);
+                        task.status = 'COMPLETE';
+                        task.progress = 100;
+                        this.notify(taskKey);
+                        return blobUrl;
+                    }
+
+                    // Otherwise, extract chosen audio track using MP4Box + mp4-muxer!
+                    task.status = 'PROCESSING';
+                    task.progress = 85;
+                    this.notify(taskKey);
+
+                    const rawBuffer = decryptedBufferCache[url] || await (await fetch(blobUrl)).arrayBuffer();
+                    const remuxedBlob = await remuxAndExtractTrack(rawBuffer, audioChoice);
+                    const remuxedBlobUrl = URL.createObjectURL(remuxedBlob);
+
+                    task.blobUrl = remuxedBlobUrl;
+                    pinnedBlobs.add(remuxedBlobUrl);
                     task.status = 'COMPLETE';
                     task.progress = 100;
-                    this.notify(url);
-                    return blobUrl;
+                    this.notify(taskKey);
+                    return remuxedBlobUrl;
                 } catch (e) {
+                    console.error("Download processing error:", e);
                     task.status = 'FAILED';
-                    this.notify(url);
+                    this.notify(taskKey);
                     throw e;
                 }
             }
@@ -1044,6 +1414,119 @@
             }
             return `https://cdn.aniclips.site/asset/${state.animeSlug}/${clipId}/${resolvedVariant}`;
         };
+
+        // --- FILE SIZE MANAGER (Download Headers & In-Memory Sizes) ---
+        const fileSizeCache = new Map();
+
+        function formatBytesToMb(bytes) {
+            if (!bytes || isNaN(bytes) || bytes <= 0) return null;
+            const mb = bytes / (1024 * 1024);
+            if (mb < 0.1) {
+                return (bytes / 1024).toFixed(0) + ' KB';
+            }
+            return mb.toFixed(1) + ' MB';
+        }
+
+        function recordFileSize(url, bytes) {
+            if (!url || !bytes) return;
+            const formatted = formatBytesToMb(bytes);
+            if (formatted) {
+                fileSizeCache.set(url, formatted);
+            }
+        }
+
+        async function fetchFileSize(url, clipId) {
+            if (!url) return null;
+            if (fileSizeCache.has(url)) return fileSizeCache.get(url);
+
+            if (decryptedBufferCache[url]) {
+                recordFileSize(url, decryptedBufferCache[url].byteLength);
+                return fileSizeCache.get(url);
+            }
+            const meta = blobMeta.get(url);
+            if (meta && meta.size) {
+                recordFileSize(url, meta.size);
+                return fileSizeCache.get(url);
+            }
+            if (blobCache[url]) {
+                return null;
+            }
+
+            const type = (url.includes('_prev.bin') || url.includes('preview')) ? 'preview' : 'hq';
+            const isGDriveOrTelegram = url.startsWith('gd=') || url.includes('gd=') || url.includes('aniclips.site');
+
+            let urlChain = [];
+            const jsDelivrUrl = getJsDelivrUrl(url);
+            const gitHubUrl = getGitHubUrl(url);
+            const proxyUrl = getProxyUrl(url, clipId, type);
+
+            if (isGDriveOrTelegram) {
+                if (url.startsWith('gd=')) {
+                    if (proxyUrl) urlChain.push(proxyUrl);
+                } else {
+                    urlChain.push(url);
+                }
+            } else {
+                if (FALLBACK_LEVEL === 1) {
+                    if (jsDelivrUrl) urlChain.push(jsDelivrUrl);
+                    if (gitHubUrl) urlChain.push(gitHubUrl);
+                    if (proxyUrl) urlChain.push(proxyUrl);
+                } else if (FALLBACK_LEVEL === 2) {
+                    if (gitHubUrl) urlChain.push(gitHubUrl);
+                    if (proxyUrl) urlChain.push(proxyUrl);
+                } else if (FALLBACK_LEVEL === 3) {
+                    if (proxyUrl) urlChain.push(proxyUrl);
+                }
+                if (urlChain.length === 0) urlChain.push(url);
+            }
+
+            for (const testUrl of urlChain) {
+                if (!testUrl) continue;
+                try {
+                    // Method 1: HEAD request
+                    const ctrl = new AbortController();
+                    const tid = setTimeout(() => ctrl.abort(), 4000);
+                    const headResp = await fetch(testUrl, { method: 'HEAD', signal: ctrl.signal });
+                    clearTimeout(tid);
+
+                    if (headResp.ok) {
+                        const cl = headResp.headers.get('content-length');
+                        if (cl && +cl > 0) {
+                            recordFileSize(url, +cl);
+                            return fileSizeCache.get(url);
+                        }
+                    }
+
+                    // Method 2: Range bytes=0-0 to read Content-Range header without downloading body
+                    const rangeCtrl = new AbortController();
+                    const rTid = setTimeout(() => rangeCtrl.abort(), 4000);
+                    const rangeResp = await fetch(testUrl, {
+                        headers: { 'Range': 'bytes=0-0' },
+                        signal: rangeCtrl.signal
+                    });
+                    clearTimeout(rTid);
+                    rangeCtrl.abort();
+
+                    const cr = rangeResp.headers.get('content-range');
+                    if (cr && cr.includes('/')) {
+                        const total = parseInt(cr.split('/')[1], 10);
+                        if (total && total > 0) {
+                            recordFileSize(url, total);
+                            return fileSizeCache.get(url);
+                        }
+                    }
+
+                    const rangeCl = rangeResp.headers.get('content-length');
+                    if (rangeCl && +rangeCl > 0 && rangeResp.status === 200) {
+                        recordFileSize(url, +rangeCl);
+                        return fileSizeCache.get(url);
+                    }
+                } catch (e) {
+                    // Try next URL candidate in fallback chain
+                }
+            }
+            return null;
+        }
 
         const DecryptionManager = {
             queue: [], activeCount: 0, MAX_CONCURRENT: 5, running: {}, internalControllers: {},
@@ -1196,6 +1679,12 @@
 
                 if (!response || !response.ok) throw new Error(`HTTP fetch failed after ${maxAttempts} attempts`);
                 const contentLength = +response.headers.get('Content-Length');
+                if (contentLength && contentLength > 0 && typeof recordFileSize === 'function') {
+                    recordFileSize(url, contentLength);
+                    if (typeof window.refreshDownloadButtons === 'function') {
+                        window.refreshDownloadButtons();
+                    }
+                }
                 const reader = response.body.getReader();
                 let receivedLength = 0; let chunks = [];
                 while (true) {
@@ -1214,6 +1703,7 @@
                 const blob = new Blob([decryptedBuffer], { type: mimeType });
                 const blobUrl = URL.createObjectURL(blob);
                 blobCache[url] = blobUrl;
+                decryptedBufferCache[url] = decryptedBuffer;
                 trackBlobUrl(url, tierHint || classifyBlobTier(url, type), blob.size);
                 if (episodeIdx !== null && episodeIdx !== undefined) {
                     if (!state.blobRegistry.has(episodeIdx)) state.blobRegistry.set(episodeIdx, []);
@@ -1372,12 +1862,16 @@
         function closePreview() {
             clearInterval(state.adTimer);
             state.adTimer = null;
+            if (typeof hidePlayerSpinner === 'function') hidePlayerSpinner();
+            const dlInfoPopover = document.getElementById('dl-info-popover');
+            if (dlInfoPopover) dlInfoPopover.classList.add('hidden');
             els.modal.classList.add('invisible', 'opacity-0');
             els.modal.classList.remove('active');
             document.body.style.overflow = '';
             els.player.pause();
             els.player.src = "";
             els.player.load();
+            if (typeof AniAudioEngine !== 'undefined') AniAudioEngine.destroy();
 
             setTimeout(() => {
                 activeCtx.idx = -1;
@@ -1587,32 +2081,670 @@
             });
         }
 
+        function formatTime(sec) {
+            if (isNaN(sec) || sec < 0) return '0:00';
+            const m = Math.floor(sec / 60);
+            const s = Math.floor(sec % 60);
+            return `${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+
+        const AniAudioEngine = {
+            audioCtx: null,
+            gainNode: null,
+            activeSource: null,
+            currentTrackIndex: 0,
+            tracks: [],
+            isDualAudio: false,
+            startTime: 0,
+            isPlaying: false,
+            currentClipUrl: null,
+            clipAudioCache: new Map(),
+
+            init() {
+                if (!this.audioCtx) {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioContextClass) return;
+                    this.audioCtx = new AudioContextClass();
+                    this.gainNode = this.audioCtx.createGain();
+                    this.gainNode.connect(this.audioCtx.destination);
+                }
+                if (this.audioCtx && this.audioCtx.state === 'suspended') {
+                    this.audioCtx.resume().catch(() => {});
+                }
+            },
+
+            setVolume(vol) {
+                if (this.gainNode) {
+                    const v = Math.max(0, Math.min(1, vol));
+                    this.gainNode.gain.setValueAtTime(v, this.audioCtx ? this.audioCtx.currentTime : 0);
+                }
+            },
+
+            async processClipBuffer(arrayBuffer, url) {
+                this.init();
+                this.stop();
+                this.currentClipUrl = url;
+
+                if (url && this.clipAudioCache.has(url)) {
+                    const cached = this.clipAudioCache.get(url);
+                    this.isDualAudio = cached.isDualAudio;
+                    this.tracks = cached.tracks || [];
+                    const pref = state.selectedAudioTrack || 'sub';
+                    this.currentTrackIndex = (pref === 'dub' && this.tracks.length > 1) ? 1 : 0;
+                    return cached;
+                }
+
+                this.tracks = [];
+                this.isDualAudio = false;
+
+                if (!arrayBuffer || !window.MP4Box) {
+                    return { isDualAudio: false, tracks: [] };
+                }
+
+                try {
+                    const info = await this._parseMp4(arrayBuffer);
+                    const audioTracks = info.audioTracks || [];
+
+                    if (audioTracks.length <= 1) {
+                        this.isDualAudio = false;
+                        const res = { isDualAudio: false, tracks: audioTracks };
+                        if (url) this.clipAudioCache.set(url, res);
+                        return res;
+                    }
+
+                    this.isDualAudio = true;
+
+                    if (typeof AudioDecoder === 'undefined') {
+                        console.warn("WebCodecs AudioDecoder not supported in this browser.");
+                        const res = { isDualAudio: true, tracks: audioTracks, fallback: true };
+                        if (url) this.clipAudioCache.set(url, res);
+                        return res;
+                    }
+
+                    for (let i = 0; i < Math.min(2, audioTracks.length); i++) {
+                        const track = audioTracks[i];
+                        const trackName = i === 0 ? 'Sub' : 'Dub';
+                        const audioBuffer = await this._decodeTrackToAudioBuffer(arrayBuffer, track);
+                        if (audioBuffer) {
+                            this.tracks.push({
+                                id: track.id,
+                                name: trackName,
+                                lang: track.language || (i === 0 ? 'jpn' : 'eng'),
+                                buffer: audioBuffer
+                            });
+                        }
+                    }
+
+                    const pref = state.selectedAudioTrack || 'sub';
+                    this.currentTrackIndex = (pref === 'dub' && this.tracks.length > 1) ? 1 : 0;
+
+                    const result = { isDualAudio: this.tracks.length > 1, tracks: this.tracks };
+                    if (url) this.clipAudioCache.set(url, result);
+                    return result;
+                } catch (err) {
+                    console.error("Failed to parse dual audio:", err);
+                    return { isDualAudio: false, tracks: [] };
+                }
+            },
+
+            _parseMp4(arrayBuffer) {
+                return new Promise((resolve, reject) => {
+                    const mp4box = MP4Box.createFile();
+                    mp4box.onError = reject;
+                    mp4box.onReady = (info) => resolve(info);
+
+                    const bufferCopy = arrayBuffer.slice(0);
+                    bufferCopy.fileStart = 0;
+                    mp4box.appendBuffer(bufferCopy);
+                    mp4box.flush();
+                });
+            },
+
+            _decodeTrackToAudioBuffer(arrayBuffer, track) {
+                return new Promise((resolve) => {
+                    if (!this.audioCtx) { resolve(null); return; }
+
+                    const mp4box = MP4Box.createFile();
+                    const sampleRate = track.audio.sample_rate || 44100;
+                    const numberOfChannels = track.audio.channel_count || 2;
+                    const audioDataChunks = [];
+                    let totalFrames = 0;
+
+                    let decoder = null;
+                    try {
+                        decoder = new AudioDecoder({
+                            output: (audioData) => {
+                                totalFrames += audioData.numberOfFrames;
+                                audioDataChunks.push(audioData);
+                            },
+                            error: (e) => console.warn("WebCodecs decode chunk error:", e)
+                        });
+
+                        const freqMap = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350];
+                        const freqIdx = freqMap.indexOf(sampleRate) !== -1 ? freqMap.indexOf(sampleRate) : 4;
+                        const b0 = (2 << 3) | (freqIdx >> 1);
+                        const b1 = ((freqIdx & 1) << 7) | (numberOfChannels << 3);
+                        const description = new Uint8Array([b0, b1]);
+
+                        decoder.configure({
+                            codec: track.codec || 'mp4a.40.2',
+                            sampleRate: sampleRate,
+                            numberOfChannels: numberOfChannels,
+                            description: description
+                        });
+                    } catch (err) {
+                        console.warn("Failed to configure AudioDecoder:", err);
+                        resolve(null);
+                        return;
+                    }
+
+                    mp4box.onReady = () => {
+                        mp4box.setExtractionOptions(track.id, null, { nbSamples: 2000 });
+                        mp4box.start();
+                    };
+
+                    mp4box.onSamples = (trackId, user, samples) => {
+                        for (const s of samples) {
+                            try {
+                                decoder.decode(new EncodedAudioChunk({
+                                    type: s.is_sync ? 'key' : 'delta',
+                                    timestamp: Math.round((s.dts / s.timescale) * 1_000_000),
+                                    duration: Math.round((s.duration / s.timescale) * 1_000_000),
+                                    data: s.data
+                                }));
+                            } catch (e) { }
+                        }
+                    };
+
+                    const bufferCopy = arrayBuffer.slice(0);
+                    bufferCopy.fileStart = 0;
+                    mp4box.appendBuffer(bufferCopy);
+                    mp4box.flush();
+
+                    decoder.flush().then(() => {
+                        if (!totalFrames || !audioDataChunks.length) {
+                            resolve(null);
+                            return;
+                        }
+                        const audioBuffer = this.audioCtx.createBuffer(numberOfChannels, totalFrames, sampleRate);
+                        let offset = 0;
+                        for (const chunk of audioDataChunks) {
+                            for (let ch = 0; ch < numberOfChannels; ch++) {
+                                const channelData = new Float32Array(chunk.numberOfFrames);
+                                chunk.copyTo(channelData, { planeIndex: ch });
+                                audioBuffer.copyToChannel(channelData, ch, offset);
+                            }
+                            offset += chunk.numberOfFrames;
+                            chunk.close();
+                        }
+                        resolve(audioBuffer);
+                    }).catch((e) => {
+                        console.warn("Decoder flush failed:", e);
+                        resolve(null);
+                    });
+                });
+            },
+
+            playAt(currentTime) {
+                if (!this.isDualAudio || !this.tracks.length || !this.audioCtx) return;
+                this.stop();
+                if (this.audioCtx.state === 'suspended') {
+                    this.audioCtx.resume().catch(() => {});
+                }
+
+                const track = this.tracks[this.currentTrackIndex];
+                if (!track || !track.buffer) return;
+
+                const offset = Math.max(0, Math.min(currentTime, track.buffer.duration - 0.05));
+                if (offset >= track.buffer.duration) return;
+
+                try {
+                    this.activeSource = this.audioCtx.createBufferSource();
+                    this.activeSource.buffer = track.buffer;
+                    this.activeSource.connect(this.gainNode);
+                    this.activeSource.start(0, offset);
+                    this.startTime = this.audioCtx.currentTime - offset;
+                    this.isPlaying = true;
+                } catch (e) {
+                    console.warn("Failed to start audio source:", e);
+                }
+            },
+
+            stop() {
+                if (this.activeSource) {
+                    try { this.activeSource.stop(); } catch (e) {}
+                    try { this.activeSource.disconnect(); } catch (e) {}
+                    this.activeSource = null;
+                }
+                this.isPlaying = false;
+            },
+
+            switchTrack(trackNameOrIndex, currentTime) {
+                let newIndex = 0;
+                if (typeof trackNameOrIndex === 'number') {
+                    newIndex = trackNameOrIndex;
+                } else {
+                    newIndex = trackNameOrIndex.toLowerCase() === 'dub' ? 1 : 0;
+                }
+                if (newIndex >= this.tracks.length) newIndex = 0;
+                if (this.currentTrackIndex === newIndex && this.isPlaying) return;
+
+                this.currentTrackIndex = newIndex;
+                state.selectedAudioTrack = newIndex === 1 ? 'dub' : 'sub';
+                try { localStorage.setItem('aniclip_audio_pref', state.selectedAudioTrack); } catch (e) {}
+
+                if (this.isPlaying) {
+                    this.playAt(currentTime);
+                }
+            },
+
+            getAudioCurrentTime() {
+                if (!this.isPlaying || !this.audioCtx) return 0;
+                return Math.max(0, this.audioCtx.currentTime - this.startTime);
+            },
+
+            destroy() {
+                this.stop();
+                this.tracks = [];
+                this.isDualAudio = false;
+                this.currentClipUrl = null;
+            }
+        };
+
+        function triggerCenterPlayIndicator(isPlay) {
+            if (!els.centerIcon) return;
+            els.centerIconSymbol.textContent = isPlay ? 'play_arrow' : 'pause';
+            els.centerIcon.classList.remove('opacity-0', 'scale-75');
+            els.centerIcon.classList.add('opacity-100', 'scale-110');
+            setTimeout(() => {
+                els.centerIcon.classList.remove('opacity-100', 'scale-110');
+                els.centerIcon.classList.add('opacity-0', 'scale-75');
+            }, 260);
+        }
+
+        let controlsHideTimer = null;
+        function showCustomControls() {
+            if (!els.customControls) return;
+            els.customControls.classList.remove('opacity-0', 'pointer-events-none');
+            els.customControls.classList.add('opacity-100');
+            clearTimeout(controlsHideTimer);
+            if (!els.player.paused) {
+                controlsHideTimer = setTimeout(() => {
+                    if (!els.player.paused && !state.isScrubbing) {
+                        els.customControls.classList.remove('opacity-100');
+                        els.customControls.classList.add('opacity-0', 'pointer-events-none');
+                    }
+                }, 2500);
+            }
+        }
+
+        function updatePlayerAudioToggleUI(activeTrack) {
+            if (!els.audioSubBtn || !els.audioDubBtn) return;
+            if (activeTrack === 'dub') {
+                els.audioDubBtn.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase transition-all bg-blue-600 text-white shadow";
+                els.audioSubBtn.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase transition-all text-slate-400 hover:text-white";
+            } else {
+                els.audioSubBtn.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase transition-all bg-blue-600 text-white shadow";
+                els.audioDubBtn.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase transition-all text-slate-400 hover:text-white";
+            }
+        }
+
+        function updateDownloadAudioSelectorUI(choice) {
+            const validChoice = (choice === 'dub') ? 'dub' : 'sub';
+            state.selectedDownloadAudio = validChoice;
+            try {
+                localStorage.setItem('aniclip_dl_audio_pref', validChoice);
+            } catch (e) { }
+
+            const pills = document.querySelectorAll('.dl-audio-pill');
+            pills.forEach(p => {
+                if (p.getAttribute('data-audio-track') === validChoice) {
+                    p.className = "dl-audio-pill active px-3 py-0.5 rounded-md text-xs font-bold uppercase transition-all bg-blue-600 text-white shadow";
+                } else {
+                    p.className = "dl-audio-pill px-3 py-0.5 rounded-md text-xs font-bold uppercase transition-all text-slate-400 hover:text-white hover:bg-slate-800";
+                }
+            });
+
+            if (typeof window.refreshDownloadButtons === 'function') {
+                window.refreshDownloadButtons();
+            }
+        }
+
+        function showPlayerSpinner(text = "Decrypting Stream...", pct = null) {
+            const spinner = els.playerSpinner || document.getElementById('player-loading-spinner');
+            const label = els.playerLoadingText || document.getElementById('player-loading-text');
+            const pctEl = els.playerLoadingPct || document.getElementById('player-loading-pct');
+            if (label && text) label.textContent = text;
+            if (pctEl) {
+                if (pct !== null && pct !== undefined && pct > 0 && pct < 100) {
+                    pctEl.textContent = `${Math.round(pct)}%`;
+                    pctEl.classList.remove('hidden');
+                } else {
+                    pctEl.classList.add('hidden');
+                }
+            }
+            if (spinner) {
+                spinner.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    spinner.classList.remove('opacity-0');
+                    spinner.classList.add('opacity-100');
+                });
+            }
+        }
+
+        function hidePlayerSpinner() {
+            const spinner = els.playerSpinner || document.getElementById('player-loading-spinner');
+            if (spinner) {
+                spinner.classList.remove('opacity-100');
+                spinner.classList.add('opacity-0');
+                setTimeout(() => {
+                    if (spinner.classList.contains('opacity-0')) {
+                        spinner.classList.add('hidden');
+                    }
+                }, 300);
+            }
+        }
+
+        function initCustomPlayerEvents() {
+            if (!els.player) return;
+
+            els.player.addEventListener('playing', () => {
+                hidePlayerSpinner();
+            });
+
+            els.player.addEventListener('canplay', () => {
+                hidePlayerSpinner();
+            });
+
+            els.player.addEventListener('waiting', () => {
+                showPlayerSpinner("Buffering...");
+            });
+
+            els.player.addEventListener('error', () => {
+                hidePlayerSpinner();
+            });
+
+            if (els.stage) {
+                els.stage.addEventListener('click', (e) => {
+                    if (e.target.closest('#custom-player-controls') || e.target.closest('#prev-clip-btn') || e.target.closest('#next-clip-btn')) return;
+                    els.player.paused ? els.player.play().catch(() => {}) : els.player.pause();
+                });
+            }
+
+            els.player.addEventListener('play', () => {
+                if (els.playIcon) els.playIcon.textContent = 'pause';
+                triggerCenterPlayIndicator(true);
+                AniAudioEngine.playAt(els.player.currentTime);
+                showCustomControls();
+            });
+
+            els.player.addEventListener('pause', () => {
+                if (els.playIcon) els.playIcon.textContent = 'play_arrow';
+                triggerCenterPlayIndicator(false);
+                AniAudioEngine.stop();
+                showCustomControls();
+            });
+
+            els.player.addEventListener('timeupdate', () => {
+                if (state.isScrubbing) return;
+                const cur = els.player.currentTime || 0;
+                const dur = els.player.duration || 0;
+                if (dur > 0) {
+                    const pct = (cur / dur) * 100;
+                    if (els.progressBar) els.progressBar.style.width = `${pct}%`;
+                    if (els.progressThumb) els.progressThumb.style.left = `${pct}%`;
+                }
+                if (els.curTimeText) els.curTimeText.textContent = formatTime(cur);
+
+                if (AniAudioEngine.isDualAudio && AniAudioEngine.isPlaying && !els.player.paused) {
+                    const audioCur = AniAudioEngine.getAudioCurrentTime();
+                    if (Math.abs(audioCur - cur) > 0.06) {
+                        AniAudioEngine.playAt(cur);
+                    }
+                }
+            });
+
+            els.player.addEventListener('durationchange', () => {
+                if (els.totalTimeText && els.player.duration) {
+                    els.totalTimeText.textContent = formatTime(els.player.duration);
+                }
+            });
+
+            els.player.addEventListener('progress', () => {
+                if (els.player.buffered.length > 0 && els.player.duration) {
+                    const bufferedEnd = els.player.buffered.end(els.player.buffered.length - 1);
+                    const pct = (bufferedEnd / els.player.duration) * 100;
+                    if (els.bufferBar) els.bufferBar.style.width = `${pct}%`;
+                }
+            });
+
+            els.player.addEventListener('seeking', () => {
+                AniAudioEngine.stop();
+            });
+
+            els.player.addEventListener('seeked', () => {
+                if (!els.player.paused) {
+                    AniAudioEngine.playAt(els.player.currentTime);
+                }
+            });
+
+            els.player.addEventListener('waiting', () => {
+                AniAudioEngine.stop();
+            });
+
+            els.player.addEventListener('playing', () => {
+                if (!els.player.paused) {
+                    AniAudioEngine.playAt(els.player.currentTime);
+                }
+            });
+
+            els.player.addEventListener('volumechange', () => {
+                const v = els.player.muted ? 0 : els.player.volume;
+                if (els.volSlider) els.volSlider.value = v;
+                if (els.muteIcon) els.muteIcon.textContent = v === 0 ? 'volume_off' : (v < 0.5 ? 'volume_down' : 'volume_up');
+                AniAudioEngine.setVolume(v);
+            });
+
+            if (els.videoContainer) {
+                els.videoContainer.addEventListener('mousemove', showCustomControls);
+                els.videoContainer.addEventListener('mouseleave', () => {
+                    if (!els.player.paused) {
+                        clearTimeout(controlsHideTimer);
+                        els.customControls.classList.remove('opacity-100');
+                        els.customControls.classList.add('opacity-0', 'pointer-events-none');
+                    }
+                });
+            }
+
+            if (els.playBtn) {
+                els.playBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    els.player.paused ? els.player.play().catch(() => {}) : els.player.pause();
+                });
+            }
+
+            if (els.muteBtn) {
+                els.muteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    els.player.muted = !els.player.muted;
+                });
+            }
+
+            if (els.volSlider) {
+                els.volSlider.addEventListener('input', (e) => {
+                    e.stopPropagation();
+                    const val = parseFloat(e.target.value);
+                    els.player.volume = val;
+                    els.player.muted = val === 0;
+                    AniAudioEngine.setVolume(val);
+                });
+            }
+
+            if (els.scrubContainer) {
+                const handleScrub = (e) => {
+                    const rect = els.scrubContainer.getBoundingClientRect();
+                    const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                    const dur = els.player.duration || 0;
+                    const targetTime = pos * dur;
+                    if (els.progressBar) els.progressBar.style.width = `${pos * 100}%`;
+                    if (els.progressThumb) els.progressThumb.style.left = `${pos * 100}%`;
+                    if (els.curTimeText) els.curTimeText.textContent = formatTime(targetTime);
+                    return targetTime;
+                };
+
+                els.scrubContainer.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    state.isScrubbing = true;
+                    const targetTime = handleScrub(e);
+                    els.player.currentTime = targetTime;
+
+                    const onMouseMove = (ev) => {
+                        if (state.isScrubbing) {
+                            const t = handleScrub(ev);
+                            els.player.currentTime = t;
+                        }
+                    };
+
+                    const onMouseUp = () => {
+                        state.isScrubbing = false;
+                        window.removeEventListener('mousemove', onMouseMove);
+                        window.removeEventListener('mouseup', onMouseUp);
+                        if (!els.player.paused) AniAudioEngine.playAt(els.player.currentTime);
+                    };
+
+                    window.addEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mouseup', onMouseUp);
+                });
+
+                els.scrubContainer.addEventListener('mousemove', (e) => {
+                    const rect = els.scrubContainer.getBoundingClientRect();
+                    const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                    const hoverTime = pos * (els.player.duration || 0);
+                    if (els.scrubTooltip) {
+                        els.scrubTooltip.style.left = `${pos * 100}%`;
+                        els.scrubTooltip.textContent = formatTime(hoverTime);
+                        els.scrubTooltip.classList.remove('hidden');
+                    }
+                });
+
+                els.scrubContainer.addEventListener('mouseleave', () => {
+                    if (els.scrubTooltip) els.scrubTooltip.classList.add('hidden');
+                });
+            }
+
+            if (els.audioSubBtn) {
+                els.audioSubBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    AniAudioEngine.switchTrack('sub', els.player.currentTime);
+                    updatePlayerAudioToggleUI('sub');
+                });
+            }
+            if (els.audioDubBtn) {
+                els.audioDubBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    AniAudioEngine.switchTrack('dub', els.player.currentTime);
+                    updatePlayerAudioToggleUI('dub');
+                });
+            }
+
+            if (els.fullscreenBtn) {
+                els.fullscreenBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (!document.fullscreenElement) {
+                        els.videoContainer.requestFullscreen().catch(() => {});
+                    } else {
+                        document.exitFullscreen().catch(() => {});
+                    }
+                });
+            }
+
+            document.addEventListener('fullscreenchange', () => {
+                const isFs = !!document.fullscreenElement;
+                if (els.fullscreenBtn && els.fullscreenBtn.querySelector('.material-symbols-rounded')) {
+                    els.fullscreenBtn.querySelector('.material-symbols-rounded').textContent = isFs ? 'fullscreen_exit' : 'fullscreen';
+                }
+            });
+
+            document.querySelectorAll('.dl-audio-pill').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const track = btn.getAttribute('data-audio-track');
+                    updateDownloadAudioSelectorUI(track);
+                });
+            });
+            updateDownloadAudioSelectorUI(state.selectedDownloadAudio);
+
+            // Download Options Info Popover Toggle
+            const dlInfoBtn = document.getElementById('dl-info-btn');
+            const dlInfoPopover = document.getElementById('dl-info-popover');
+            const dlInfoClose = document.getElementById('dl-info-close');
+            if (dlInfoBtn && dlInfoPopover) {
+                dlInfoBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dlInfoPopover.classList.toggle('hidden');
+                });
+                if (dlInfoClose) {
+                    dlInfoClose.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        dlInfoPopover.classList.add('hidden');
+                    });
+                }
+                document.addEventListener('click', (e) => {
+                    if (!dlInfoPopover.classList.contains('hidden') && !dlInfoPopover.contains(e.target) && e.target !== dlInfoBtn) {
+                        dlInfoPopover.classList.add('hidden');
+                    }
+                });
+            }
+        }
+
         function userSwitchClip(newIdx) {
             if (newIdx === activeCtx.idx) return;
+            AniAudioEngine.stop();
             activeCtx.idx = newIdx;
             state.adClipChanges++;
             maybeRefreshAd();
             loadPlayer(true);
         }
 
-        async function forceDownload(rawUrl, clipId, filename) {
+        async function forceDownload(rawUrl, clipId, filename, suffix) {
             trackDownload();
 
-            const task = DownloadTasks.getTask(rawUrl, clipId, filename);
-            if (task.status === 'COMPLETE') {
-                const a = document.createElement('a'); a.href = task.blobUrl; a.download = `${filename}.mp4`;
-                a.click(); return;
+            const audioChoice = (state.currentAudioMode === 'dual') ? (state.selectedDownloadAudio || 'sub') : 'single';
+            let targetFilename = filename;
+            if (state.currentAudioMode === 'dual') {
+                targetFilename += (audioChoice === 'dub') ? '_Dub' : '_Sub';
+            }
+
+            const taskKey = `${rawUrl}_${audioChoice}`;
+            const task = DownloadTasks.getTask(taskKey, clipId, targetFilename);
+            if (task.status === 'COMPLETE' && task.blobUrl) {
+                const a = document.createElement('a');
+                a.href = task.blobUrl;
+                a.download = `${targetFilename}.mp4`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => a.remove(), 100);
+                return;
             }
             if (task.status !== 'IDLE' && task.status !== 'FAILED') return;
 
             try {
-                const blobUrl = await DownloadTasks.startDownload(rawUrl, clipId, filename);
-                const a = document.createElement('a'); a.href = blobUrl; a.download = `${filename}.mp4`;
-                a.click();
-            } catch { window.open(state.monetagSmartlink, '_blank'); }
+                const blobUrl = await DownloadTasks.startDownload(rawUrl, clipId, targetFilename, audioChoice);
+                if (blobUrl) {
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = `${targetFilename}.mp4`;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => a.remove(), 100);
+                }
+            } catch (err) {
+                console.error("Download failed:", err);
+                window.open(state.monetagSmartlink, '_blank');
+            }
         }
 
         async function loadPlayer(shouldPlay) {
+            AniAudioEngine.stop();
             const clipsData = state.clipsCache[activeCtx.epId];
             const clips = clipsData.clips || clipsData;
             const clip = clips[activeCtx.idx];
@@ -1629,65 +2761,206 @@
             if (dur > 2000) dur = dur / 1000;
             const durText = (!dur || isNaN(dur)) ? "??" : dur.toFixed(1) + 's';
 
-            els.player.src = ""; els.player.poster = "";
-            document.getElementById('preview-filename').textContent = "Decrypting Stream...";
+            // Check if preview clip is already decrypted and in RAM
+            const isCachedInRam = Boolean(blobCache[previewRaw] || (decryptedBufferCache[previewRaw] && blobCache[previewRaw]));
+
+            if (!isCachedInRam) {
+                els.player.src = ""; els.player.poster = "";
+                showPlayerSpinner("Decrypting Stream...");
+                document.getElementById('preview-filename').textContent = "Decrypting Stream...";
+            } else {
+                document.getElementById('preview-filename').textContent = baseFileName + '.mp4';
+                if (els.player.src !== blobCache[previewRaw]) {
+                    els.player.src = blobCache[previewRaw];
+                }
+            }
+
             document.getElementById('preview-duration').textContent = durText;
+            if (els.progressBar) els.progressBar.style.width = '0%';
+            if (els.progressThumb) els.progressThumb.style.left = '0%';
+            if (els.curTimeText) els.curTimeText.textContent = '0:00';
+            if (els.totalTimeText) els.totalTimeText.textContent = durText;
+
+            // Reset dual audio UI while loading
+            if (els.playerAudioToggle) {
+                els.playerAudioToggle.classList.add('hidden');
+                els.playerAudioToggle.classList.remove('flex');
+            }
+            if (els.dlAudioSelector) {
+                els.dlAudioSelector.classList.add('hidden');
+                els.dlAudioSelector.classList.remove('flex');
+            }
+            state.currentAudioMode = 'single';
 
             const container = els.dlContainer; container.innerHTML = '';
-            const renderDownloadBtn = (rawUrl, label, suffix) => {
-                const filename = `aniclips.site-${baseFileName}_${suffix}`;
+
+            const renderDownloadBtn = (rawUrl, baseLabel, suffix) => {
                 const btn = document.createElement('button');
-                btn.className = "relative w-full py-4 px-4 text-white text-center rounded-lg font-bold shadow-lg flex items-center justify-center gap-2 group transition-all active:scale-[0.98] overflow-hidden";
+                btn.className = "relative w-full py-3.5 px-4 text-white text-center rounded-lg font-bold shadow-lg flex items-center justify-center gap-2 group transition-all active:scale-[0.98] overflow-hidden";
                 if (suffix === 'Fast') btn.classList.add('bg-slate-800', 'hover:bg-slate-700', 'border', 'border-slate-700', 'text-slate-200');
-                else btn.classList.add('bg-blue-600', 'hover:bg-blue-500', 'border', 'border-transparent', 'mt-2');
+                else btn.classList.add('bg-blue-600', 'hover:bg-blue-500', 'border', 'border-transparent');
 
                 const progressLayer = document.createElement('div');
                 progressLayer.className = "absolute inset-0 bg-white/10 w-0 transition-all duration-300 pointer-events-none";
                 btn.appendChild(progressLayer);
+
                 const content = document.createElement('div');
-                content.className = "relative z-10 flex items-center gap-2";
-                content.innerHTML = `<span class="material-symbols-rounded group-hover:-translate-y-0.5 transition-transform">download</span> ${label}`;
+                content.className = "relative z-10 flex items-center justify-center gap-2";
+                content.innerHTML = `<span class="material-symbols-rounded group-hover:-translate-y-0.5 transition-transform text-xl">download</span> <span class="font-bold">${baseLabel}</span>`;
                 btn.appendChild(content);
 
+                const sizeBadge = document.createElement('span');
+                sizeBadge.className = "dl-size-corner " + (suffix === 'Fast' ? 'text-slate-400' : 'text-blue-100');
+                btn.appendChild(sizeBadge);
+
                 btn.onclick = () => {
+                    const filename = `aniclips.site-${baseFileName}_${suffix}`;
                     window.open(state.monetagSmartlink, '_blank');
-                    forceDownload(rawUrl, clip.id, filename);
+                    forceDownload(rawUrl, clip.id, filename, suffix);
                 };
 
-                DownloadTasks.subscribe(rawUrl, (task) => {
+                const updateBtnState = () => {
+                    const audioChoice = (state.currentAudioMode === 'dual') ? (state.selectedDownloadAudio || 'sub') : 'single';
+                    const taskKey = `${rawUrl}_${audioChoice}`;
+                    const task = DownloadTasks.getTask(taskKey, clip.id, '');
+                    const sizeStr = fileSizeCache.get(rawUrl);
+                    sizeBadge.textContent = sizeStr || '';
+
                     if (task.status === 'DOWNLOADING') {
                         progressLayer.style.width = `${task.progress}%`;
-                        content.innerHTML = `<span class="material-symbols-rounded animate-spin text-lg">progress_activity</span> Downloading... ${task.progress}%`;
+                        content.innerHTML = `<span class="material-symbols-rounded animate-spin text-lg">progress_activity</span> <span class="font-bold">Downloading... ${task.progress}%</span>`;
+                        btn.disabled = true;
+                    } else if (task.status === 'PROCESSING') {
+                        progressLayer.style.width = `${task.progress}%`;
+                        content.innerHTML = `<span class="material-symbols-rounded animate-spin text-lg">audio_file</span> <span class="font-bold">Processing Audio...</span>`;
                         btn.disabled = true;
                     } else if (task.status === 'COMPLETE') {
                         progressLayer.style.width = "100%";
-                        content.innerHTML = `<span class="material-symbols-rounded">check_circle</span> Download Ready`;
+                        content.innerHTML = `<span class="material-symbols-rounded text-xl">check_circle</span> <span class="font-bold">Download Ready</span>`;
                         btn.disabled = false;
                     } else if (task.status === 'FAILED') {
-                        content.innerHTML = `<span class="material-symbols-rounded">error</span> Try Again`;
+                        progressLayer.style.width = "0%";
+                        content.innerHTML = `<span class="material-symbols-rounded text-xl">error</span> <span class="font-bold">Try Again</span>`;
+                        btn.disabled = false;
+                    } else {
+                        progressLayer.style.width = "0%";
+                        content.innerHTML = `<span class="material-symbols-rounded group-hover:-translate-y-0.5 transition-transform text-xl">download</span> <span class="font-bold">${baseLabel}</span>`;
                         btn.disabled = false;
                     }
-                });
+                };
+
+                btn.updateState = updateBtnState;
+
+                DownloadTasks.subscribe(`${rawUrl}_single`, updateBtnState);
+                DownloadTasks.subscribe(`${rawUrl}_sub`, updateBtnState);
+                DownloadTasks.subscribe(`${rawUrl}_dub`, updateBtnState);
                 return btn;
             };
 
-            container.appendChild(renderDownloadBtn(previewRaw, "Fast Clip", "Fast"));
-            if (hqRaw) container.appendChild(renderDownloadBtn(hqRaw, "High Quality Clip", "HQ"));
+            const fastBtn = renderDownloadBtn(previewRaw, "Fast Clip", "Fast");
+            container.appendChild(fastBtn);
+
+            let hqBtn = null;
+            if (hqRaw) {
+                hqBtn = renderDownloadBtn(hqRaw, "High Quality Clip", "HQ");
+                container.appendChild(hqBtn);
+            }
+
+            window.refreshDownloadButtons = () => {
+                if (fastBtn && fastBtn.updateState) fastBtn.updateState();
+                if (hqBtn && hqBtn.updateState) hqBtn.updateState();
+            };
+
+            // Query file sizes via headers asynchronously (skip network if already cached or in RAM)
+            if (!isCachedInRam && !fileSizeCache.has(previewRaw)) {
+                fetchFileSize(previewRaw, clip.id).then(size => {
+                    if (size && typeof window.refreshDownloadButtons === 'function') {
+                        window.refreshDownloadButtons();
+                    }
+                });
+            } else if (fileSizeCache.has(previewRaw)) {
+                if (typeof window.refreshDownloadButtons === 'function') {
+                    window.refreshDownloadButtons();
+                }
+            }
+
+            if (hqRaw && !fileSizeCache.has(hqRaw)) {
+                fetchFileSize(hqRaw, clip.id).then(size => {
+                    if (size && typeof window.refreshDownloadButtons === 'function') {
+                        window.refreshDownloadButtons();
+                    }
+                });
+            }
 
             try {
                 const epIdx = ep ? ep.index : null;
-                const decryptedUrl = await DecryptionManager.getBlobUrl(previewRaw, clip.id, 1, null, null, epIdx, 'preview');
+                const decryptedUrl = await DecryptionManager.getBlobUrl(previewRaw, clip.id, 1, null, (p) => {
+                    if (!isCachedInRam) showPlayerSpinner("Decrypting Stream...", p);
+                }, epIdx, 'preview');
                 if (!decryptedUrl) throw new Error("Decryption returned empty");
-                els.player.src = decryptedUrl;
+
+                let audioResult = null;
+                if (AniAudioEngine.clipAudioCache && AniAudioEngine.clipAudioCache.has(previewRaw)) {
+                    audioResult = await AniAudioEngine.processClipBuffer(null, previewRaw);
+                } else {
+                    if (!isCachedInRam) showPlayerSpinner("Preparing Audio...");
+                    const rawBuffer = decryptedBufferCache[previewRaw] || await (await fetch(decryptedUrl)).arrayBuffer();
+                    if (!decryptedBufferCache[previewRaw] && rawBuffer) {
+                        decryptedBufferCache[previewRaw] = rawBuffer;
+                    }
+                    audioResult = await AniAudioEngine.processClipBuffer(rawBuffer, previewRaw);
+                }
+
+                if (audioResult && audioResult.isDualAudio && !audioResult.fallback) {
+                    state.currentAudioMode = 'dual';
+                    if (els.playerAudioToggle) {
+                        els.playerAudioToggle.classList.remove('hidden');
+                        els.playerAudioToggle.classList.add('flex');
+                    }
+                    if (els.dlAudioSelector) {
+                        els.dlAudioSelector.classList.remove('hidden');
+                        els.dlAudioSelector.classList.add('flex');
+                    }
+                    els.player.muted = true;
+                    updatePlayerAudioToggleUI(state.selectedAudioTrack);
+                    updateDownloadAudioSelectorUI(state.selectedDownloadAudio);
+                } else {
+                    state.currentAudioMode = 'single';
+                    if (els.playerAudioToggle) {
+                        els.playerAudioToggle.classList.add('hidden');
+                        els.playerAudioToggle.classList.remove('flex');
+                    }
+                    if (els.dlAudioSelector) {
+                        els.dlAudioSelector.classList.add('hidden');
+                        els.dlAudioSelector.classList.remove('flex');
+                    }
+                    els.player.muted = false;
+                    if (typeof window.refreshDownloadButtons === 'function') {
+                        window.refreshDownloadButtons();
+                    }
+                }
+
+                if (els.player.src !== decryptedUrl) {
+                    els.player.src = decryptedUrl;
+                }
                 document.getElementById('preview-filename').textContent = baseFileName + '.mp4';
+                if (!isCachedInRam) {
+                    showPlayerSpinner("Buffering...");
+                } else {
+                    hidePlayerSpinner();
+                }
+
                 if (shouldPlay) els.player.play().catch(() => { });
 
                 if (state.autoplay && activeCtx.idx < total - 1) {
                     const nextClip = clips[activeCtx.idx + 1];
                     const nextPreviewRaw = nextClip?.sources?.preview || nextClip?.video_url || "";
-                    if (nextPreviewRaw) DecryptionManager.getBlobUrl(nextPreviewRaw, nextClip.id, 4, null, null, epIdx, 'preview').catch(() => { });
+                    if (nextPreviewRaw && !blobCache[nextPreviewRaw] && !decryptedBufferCache[nextPreviewRaw]) {
+                        DecryptionManager.getBlobUrl(nextPreviewRaw, nextClip.id, 4, null, null, epIdx, 'preview').catch(() => { });
+                    }
                 }
             } catch (e) {
+                hidePlayerSpinner();
                 document.getElementById('preview-filename').textContent = "Decryption Failed";
                 console.error(e);
             }
@@ -1722,6 +2995,21 @@
             if (e.key === 'ArrowLeft') userSwitchClip(activeCtx.idx - 1);
             if (e.key === ' ' && document.activeElement !== els.player) { e.preventDefault(); els.player.paused ? els.player.play() : els.player.pause(); }
             if (e.key === 'Escape') closePreview();
+
+            if (!['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+                if (e.key === 'm' || e.key === 'M') {
+                    els.player.muted = !els.player.muted;
+                } else if (e.key === 'f' || e.key === 'F') {
+                    if (!document.fullscreenElement) els.videoContainer.requestFullscreen().catch(() => {});
+                    else document.exitFullscreen().catch(() => {});
+                } else if (e.key === 'a' || e.key === 'A') {
+                    if (state.currentAudioMode === 'dual') {
+                        const nextTrack = (state.selectedAudioTrack === 'sub') ? 'dub' : 'sub';
+                        AniAudioEngine.switchTrack(nextTrack, els.player.currentTime);
+                        updatePlayerAudioToggleUI(nextTrack);
+                    }
+                }
+            }
         });
 
         function trackDownload() { fetch(`${API_URL}/animes/${state.animeId}/track-download`, { method: 'POST' }).catch(() => { }); }
